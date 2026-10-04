@@ -299,6 +299,15 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
   .busy{width:92vw;justify-content:space-between;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 }
 @media (max-width:380px){ :root{--mx:8px;--pl:18px} .title h1{font-size:23px} }
+/* 闪卡 / 刷题的「范围」选择 */
+.scope-box{border:1.5px solid var(--line);border-radius:12px;padding:8px 14px;margin:0 0 16px;background:var(--sheet2)}
+.scope-box summary{cursor:pointer;font-weight:600}
+.scope-box .sbtns{display:flex;gap:8px;margin:10px 0 4px}
+.scope-list{list-style:none;margin:6px 0 2px;padding:0;max-height:240px;overflow-y:auto}
+.scope-list li{padding:5px 0;border-bottom:1px dashed var(--line)}
+.scope-list label{display:flex;gap:10px;align-items:center;cursor:pointer;min-width:0}
+.scope-list input{width:18px;height:18px;flex:0 0 auto;accent-color:var(--ink)}
+.scope-list .fname{flex:1;min-width:0}
 @media print{
   body{background:#fff;color:#000}
   .aurora{display:none}
@@ -382,8 +391,12 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
         <label>数量
           <select id="cardCount"><option>10</option><option selected>20</option><option>30</option></select>
         </label>
+        <label class="grow">重点章节或主题（可不填）
+          <input id="cardFocus" type="text" placeholder="例如：第 24、25 章 定积分">
+        </label>
         <button class="btn primary" id="btnCards" data-gen>生成闪卡</button>
       </div>
+      <div class="scope no-print" id="scope-cards" hidden></div>
       <div class="notice error" id="err-cards" hidden></div>
       <div id="cardsArea"></div>
       <div class="bar no-print histbar" id="hb-cards"></div>
@@ -401,8 +414,12 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
         <label>难度
           <select id="quizDiff"><option>基础</option><option selected>中等</option><option>拔高</option></select>
         </label>
+        <label class="grow">重点章节或主题（可不填）
+          <input id="quizFocus" type="text" placeholder="例如：第 24、25 章 定积分">
+        </label>
         <button class="btn primary" id="btnQuiz" data-gen>生成模拟题</button>
       </div>
+      <div class="scope no-print" id="scope-quiz" hidden></div>
       <div class="notice error" id="err-quiz" hidden></div>
       <div id="quizArea"></div>
       <div id="wrongArea"></div>
@@ -956,8 +973,20 @@ function systemPrompt(opts) {
   ]).filter(Boolean).join('\n');
 }
 function subjFiles() { return files.filter(f => f.subject === S.settings.subject); }
-async function gatherContext(optional, signal) {
-  const sel = subjFiles().filter(f => f.selected);
+// 「范围」选择：闪卡 / 刷题可以只用其中几份资料。key = 类别|学科，没有记录 = 用全部勾选的资料
+const scopeSel = {}, scopeOpen = {};
+function scopeIds(kind) {
+  const s = scopeSel[kind + '|' + S.settings.subject];
+  if (!s) return null;
+  const valid = new Set(subjFiles().filter(f => f.selected).map(f => f.id));
+  return new Set(Array.from(s).filter(id => valid.has(id)));
+}
+async function gatherContext(optional, signal, ids) {
+  let sel = subjFiles().filter(f => f.selected);
+  if (ids) {
+    sel = sel.filter(f => ids.has(f.id));
+    if (!sel.length) throw new AppError('「范围」里一份资料都没勾选。请展开「范围」，至少勾选一份。');
+  }
   if (!sel.length) {
     if (optional) return { parts: [], count: 0 };
     throw new AppError('请先在「资料」页上传并勾选至少一份「' + S.settings.subject + '」资料。');
@@ -1098,12 +1127,12 @@ async function genNotes() {
 async function genCards() {
   if (!(await ensureRoom('cards'))) return;
   run('cards', '正在生成闪卡', async (signal) => {
-    const ctx = await gatherContext(false, signal);
-    const n = $('#cardCount').value;
+    const ctx = await gatherContext(false, signal, scopeIds('cards'));
+    const n = $('#cardCount').value, focus = $('#cardFocus').value.trim();
     const prompt = [
       '请根据资料生成 ' + n + ' 张复习闪卡。',
       cfg().cardHint,
-      '覆盖资料的主要知识点，由浅入深，不要重复。',
+      focus ? '只围绕这些章节或主题出卡：' + focus + '。不要出其他章节的内容，不要重复。' : '覆盖资料的主要知识点，由浅入深，不要重复。',
       '严格按下面的格式输出，不要输出其他文字，不要使用代码块：',
       '@@CARD', 'Q: 问题', 'A: 答案', '@@END'
     ].join('\n');
@@ -1138,11 +1167,11 @@ function loadQuiz(list) {
 async function genQuiz() {
   if (!(await ensureRoom('quiz'))) return;
   run('quiz', '正在出题', async (signal) => {
-    const ctx = await gatherContext(false, signal);
-    const n = $('#quizCount').value, type = $('#quizType').value, diff = $('#quizDiff').value;
+    const ctx = await gatherContext(false, signal, scopeIds('quiz'));
+    const n = $('#quizCount').value, type = $('#quizType').value, diff = $('#quizDiff').value, focus = $('#quizFocus').value.trim();
     const sa = cfg().shortAsk;
     const typeText = type === '混合' ? '选择题和' + sa + '混合（约六成选择题）' : (type === '只出选择题' ? '只出选择题' : '只出' + sa);
-    const prompt = ['请根据资料出 ' + n + ' 道【' + S.settings.subject + '】模拟题。题型：' + typeText + '。难度：' + diff + '。题目必须能依据资料作答，覆盖不同章节。', quizFormat()].join('\n');
+    const prompt = ['请根据资料出 ' + n + ' 道【' + S.settings.subject + '】模拟题。题型：' + typeText + '。难度：' + diff + '。题目必须能依据资料作答，' + (focus ? '只考这些章节或主题：' + focus + '，不要考其他章节。' : '覆盖不同章节。'), quizFormat()].join('\n');
     const r = await callGemini({ system: systemPrompt(), contents: [{ role: 'user', parts: ctx.parts.concat([{ text: prompt }]) }], signal: signal });
     const list = parseQuiz(r.text);
     if (!list.length) throw new AppError('没能从回复里解析出题目，请再点一次「生成模拟题」。');
@@ -1299,11 +1328,45 @@ function renderFiles() {
     const cb = $('input', li); cb.checked = !!f.selected;
     $('.fname', li).textContent = f.name;
     $('.fmeta', li).textContent = fmtSize(f.size || 0) + (f.kind === 'text' ? ' · 已转成文字' : (f.kind === 'remote' ? ' · 大文件通道' : ''));
-    cb.onchange = () => { f.selected = cb.checked; idbPut(f); updateSummary(); };
+    cb.onchange = () => { f.selected = cb.checked; idbPut(f); updateSummary(); renderScope('cards'); renderScope('quiz'); };
     $('button', li).onclick = () => { if (f.shared) { (S.settings.hidden = S.settings.hidden || []).push(f.id); save(); } files = files.filter(x => x.id !== f.id); idbDel(f.id); renderFiles(); };
     ul.appendChild(li);
   });
-  updateSummary(); updateCounts();
+  updateSummary(); updateCounts(); renderScope('cards'); renderScope('quiz');
+}
+// 闪卡 / 刷题页的「范围」：展开后勾选要用哪几份资料（只有 2 份以上资料时才显示）
+function renderScope(kind) {
+  const box = $('#scope-' + kind); if (!box) return;
+  const mine = subjFiles().filter(f => f.selected);
+  box.innerHTML = '';
+  if (mine.length < 2) { box.hidden = true; delete scopeSel[kind + '|' + S.settings.subject]; return; }
+  box.hidden = false;
+  const key = kind + '|' + S.settings.subject, cur = scopeSel[key];
+  const chosen = new Set(cur ? mine.filter(f => cur.has(f.id)).map(f => f.id) : mine.map(f => f.id));
+  const apply = () => {
+    if (chosen.size === mine.length) delete scopeSel[key]; else scopeSel[key] = new Set(chosen);
+    renderScope(kind);
+  };
+  const det = document.createElement('details'); det.className = 'scope-box'; det.open = !!scopeOpen[kind];
+  det.addEventListener('toggle', () => { scopeOpen[kind] = det.open; });
+  const sm = document.createElement('summary');
+  sm.textContent = chosen.size === mine.length ? '范围：全部 ' + mine.length + ' 份资料（点开可只选其中几份）' : '范围：已选 ' + chosen.size + ' / ' + mine.length + ' 份资料';
+  det.appendChild(sm);
+  const row = document.createElement('div'); row.className = 'sbtns';
+  [['全选', () => { mine.forEach(f => chosen.add(f.id)); apply(); }], ['全不选', () => { chosen.clear(); apply(); }]].forEach(p => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small line'; b.textContent = p[0]; b.onclick = p[1]; row.appendChild(b);
+  });
+  det.appendChild(row);
+  const ul = document.createElement('ul'); ul.className = 'scope-list';
+  mine.forEach(f => {
+    const li = document.createElement('li'), lb = document.createElement('label');
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = chosen.has(f.id);
+    cb.onchange = () => { if (cb.checked) chosen.add(f.id); else chosen.delete(f.id); apply(); };
+    const nm = document.createElement('span'); nm.className = 'fname'; nm.textContent = f.name;
+    lb.appendChild(cb); lb.appendChild(nm); li.appendChild(lb); ul.appendChild(li);
+  });
+  det.appendChild(ul);
+  box.appendChild(det);
 }
 function updateSummary() {
   const mine = subjFiles(), sel = mine.filter(f => f.selected);
