@@ -1,0 +1,2123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>考前助手</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%92%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.10/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.10/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+/* 设计：极光笔记本。背景是随学科变色的柔和极光 + 渐隐点阵；内容页是磨砂玻璃纸，页边线和荧光笔黄保留。 */
+:root{
+  --paper:#f3f6fc; --dot:rgba(58,88,160,.16);
+  --glass:rgba(255,255,255,.74); --glass-line:rgba(255,255,255,.9); --hover:rgba(255,255,255,.6);
+  --shadow:0 0 0 1px rgba(23,38,63,.06),0 28px 60px -30px rgba(40,64,128,.38);
+  --sheet:#ffffff; --sheet2:#f1f4fb;
+  --ink:#17263f; --muted:#5d6b7c; --line:#d3dbe8;
+  --margin:rgba(235,110,110,.42); --hl:#ffe45e; --hl-ink:#17263f;
+  --accent:#17263f; --accent-ink:#ffffff;
+  --ok:#1b7f55; --ok-soft:#d9f0e4; --bad:#c23b32; --bad-soft:#fadcd9;
+  --warn:#8a5a00; --warn-soft:#fff1c9;
+  --a1:#9ec1ff; --a2:#c3b3ff; --a3:#a9ecd9; --glow:.62;
+  --kai:"Kaiti SC","STKaiti","KaiTi","楷体","AR PL UKai CN","Noto Serif SC",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans SC","Segoe UI",Roboto,sans-serif;
+  --mx:36px; --pl:54px;
+}
+body[data-pal="1"]{--a1:#b3a6ff;--a2:#84d3ff;--a3:#ffbddd}
+body[data-pal="2"]{--a1:#74e3d1;--a2:#c9ef93;--a3:#8fcfff}
+body[data-pal="3"]{--a1:#92e6a6;--a2:#f3e68c;--a3:#82ddd0}
+body[data-pal="4"]{--a1:#ffc7a6;--a2:#ffb5cb;--a3:#d0bbff}
+body[data-pal="5"]{--a1:#ff9fc2;--a2:#ffcf9e;--a3:#b9c8ff}
+body[data-pal="6"]{--a1:#ffd96b;--a2:#ffb98a;--a3:#a7e3a0}
+body[data-pal="7"]{--a1:#7fd6f2;--a2:#8fb0ff;--a3:#b6f0d6}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#0b1420; --dot:rgba(170,200,255,.11);
+    --glass:rgba(21,33,47,.68); --glass-line:rgba(255,255,255,.09); --hover:rgba(255,255,255,.07);
+    --shadow:0 0 0 1px rgba(255,255,255,.04),0 30px 70px -30px rgba(0,0,0,.7);
+    --sheet:#172331; --sheet2:#1e2c3d;
+    --ink:#e8eef2; --muted:#9bb0bf; --line:#2c3e53;
+    --margin:rgba(220,120,120,.38); --hl:#ffe45e; --hl-ink:#10202b;
+    --accent:#ffe45e; --accent-ink:#10202b;
+    --ok:#6fd1a2; --ok-soft:#173a2c; --bad:#ff948b; --bad-soft:#40201f;
+    --warn:#f0c46a; --warn-soft:#3a2f14;
+    --glow:.34;
+  }
+}
+@media (max-width:640px){ :root{ --mx:12px; --pl:24px; } }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; color:var(--ink); font:16px/1.7 var(--sans);
+  background-color:var(--paper);
+}
+/* 极光背景：三团色光缓慢漂移，切换学科时颜色会渐变；点阵只在页面上方可见 */
+.aurora{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:var(--paper)}
+.aurora::after{content:"";position:absolute;inset:0;
+  background-image:radial-gradient(var(--dot) 1px,transparent 1.3px);background-size:24px 24px;
+  -webkit-mask-image:radial-gradient(ellipse 80% 55% at 50% 0%,#000 0%,transparent 80%);
+  mask-image:radial-gradient(ellipse 80% 55% at 50% 0%,#000 0%,transparent 80%)}
+.aurora i{position:absolute;border-radius:50%;filter:blur(90px);opacity:var(--glow);will-change:transform;transition:background-color 1.4s ease}
+.aurora i:nth-child(1){width:60vmax;height:60vmax;left:-16vmax;top:-26vmax;background:var(--a1);animation:drift1 40s ease-in-out infinite alternate}
+.aurora i:nth-child(2){width:52vmax;height:52vmax;right:-18vmax;top:4vmax;background:var(--a2);animation:drift2 48s ease-in-out infinite alternate}
+.aurora i:nth-child(3){width:48vmax;height:48vmax;left:18vw;bottom:-30vmax;background:var(--a3);animation:drift3 56s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(9vmax,7vmax) scale(1.1)}}
+@keyframes drift2{to{transform:translate(-8vmax,10vmax) scale(.92)}}
+@keyframes drift3{to{transform:translate(-10vmax,-6vmax) scale(1.12)}}
+@media (prefers-reduced-motion:reduce){.aurora i{animation:none;transition:none}}
+.shell{max-width:920px;margin:0 auto;padding:16px 14px 120px}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:10px 4px 14px}
+.title h1{margin:0;font:700 34px/1.1 var(--kai);letter-spacing:.04em}
+.title p{margin:4px 0 0;color:var(--muted);font-size:14px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--hl);outline-offset:2px}
+.btn{
+  border:1.5px solid var(--ink);background:transparent;color:var(--ink);
+  padding:8px 16px;border-radius:10px;cursor:pointer;min-height:40px;line-height:1.2;white-space:nowrap;flex-shrink:0;
+}
+.btn:hover{background:var(--sheet2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.12)}
+.btn.line{border-color:var(--line)}
+.btn.small{padding:5px 11px;min-height:32px;font-size:14px}
+.btn.good{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.btn.badb{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.subjects{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 12px}
+.subjects::-webkit-scrollbar{display:none}
+.subjects button{
+  flex:0 0 auto;display:flex;align-items:center;gap:8px;min-height:42px;padding:7px 18px;cursor:pointer;font-weight:700;
+  border:1px solid var(--glass-line);border-radius:999px;background:var(--glass);color:var(--ink);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 8px 20px -14px rgba(40,64,128,.5);
+  transition:background-color .2s,color .2s
+}
+.subjects button:hover:not(:disabled):not([aria-pressed=true]){background:var(--sheet)}
+.subjects button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.subjects button:disabled{cursor:not-allowed;opacity:.55}
+.subjects .sd{width:10px;height:10px;border-radius:50%;background:var(--a1);box-shadow:0 0 0 2px rgba(255,255,255,.7)}
+.subjects button[data-pal="0"] .sd{background:#6f9bff}
+.subjects button[data-pal="1"] .sd{background:#9a86ff}
+.subjects button[data-pal="2"] .sd{background:#35c9b0}
+.subjects button[data-pal="3"] .sd{background:#5cc977}
+.subjects button[data-pal="4"] .sd{background:#ff9d73}
+.subjects button[data-pal="5"] .sd{background:#ff8fb8}
+.subjects button[data-pal="6"] .sd{background:#f2c230}
+.subjects button[data-pal="7"] .sd{background:#4fc3e8}
+.subjects button.add{border:1.5px dashed var(--line);background:transparent;color:var(--muted);box-shadow:none;font-weight:600}
+.subjects button.add:hover:not(:disabled){background:var(--glass);color:var(--ink)}
+.subjects .cnt{font-style:normal;font-size:12px;font-weight:600;min-width:20px;padding:0 6px;border-radius:999px;background:rgba(127,140,160,.22);line-height:20px;text-align:center}
+.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 12px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  flex:0 0 auto;border:1px solid transparent;background:transparent;color:var(--muted);
+  padding:8px 20px;border-radius:12px;cursor:pointer;font-weight:600
+}
+.tab:hover{background:var(--hover)}
+.tab.active{background:var(--sheet);color:var(--ink);border-color:var(--line);
+  box-shadow:inset 0 -5px 0 var(--hl),0 8px 18px -12px rgba(40,64,128,.45)}
+.sheet{
+  background-color:var(--glass);border:1px solid var(--glass-line);border-radius:24px;box-shadow:var(--shadow);
+  -webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3);
+  padding:26px 26px 30px var(--pl);min-height:360px;
+  background-image:linear-gradient(90deg,transparent var(--mx),var(--margin) var(--mx),var(--margin) calc(var(--mx) + 2px),transparent calc(var(--mx) + 2px));
+}
+@media (max-width:640px){ .sheet{padding-right:16px;border-radius:20px} .subjects button{padding:6px 14px} }
+.sheet h2{font:700 21px/1.4 var(--kai);margin:22px 0 10px}
+.sheet h2:first-child{margin-top:0}
+.muted{color:var(--muted)} .fine{font-size:13px}
+.spacer{flex:1}
+.notice{border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 16px;background:var(--sheet2)}
+.notice p{margin:4px 0 10px}
+.notice.warn{background:var(--warn-soft);border-color:var(--warn);color:var(--ink)}
+.notice.error{background:var(--bad-soft);border-color:var(--bad);white-space:pre-wrap}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:0 0 16px}
+.controls label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted)}
+.controls .grow{flex:1 1 220px}
+select,input[type=text],input[type=password],textarea{
+  border:1.5px solid var(--line);background:var(--sheet);border-radius:10px;padding:8px 10px;min-height:40px;width:100%;
+}
+select{width:auto;min-width:90px}
+textarea{resize:vertical;line-height:1.6}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg button{border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:6px 18px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--hl);color:var(--hl-ink);border-color:var(--hl);font-weight:700}
+.drop{
+  display:block;border:2px dashed var(--line);border-radius:16px;padding:26px 16px;text-align:center;cursor:pointer;
+  background:var(--sheet2);transition:border-color .15s,background .15s
+}
+.drop small{display:block;color:var(--muted);margin-top:4px}
+.drop:hover,.drop.over,.drop:focus-within{border-color:var(--ink);background:var(--sheet)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.files{list-style:none;margin:14px 0 6px;padding:0}
+.file{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px dashed var(--line)}
+.file label{flex:1;display:flex;gap:10px;align-items:center;min-width:0;cursor:pointer}
+.file input{width:18px;height:18px;flex:0 0 auto;accent-color:var(--ink)}
+.fname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fmeta{color:var(--muted);font-size:13px;flex:0 0 auto}
+.icon{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:16px;padding:6px 8px;border-radius:6px}
+.icon:hover{color:var(--bad);background:var(--bad-soft)}
+.empty{color:var(--muted);padding:26px 4px;text-align:center}
+.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+/* 渲染出来的 Markdown */
+.md{line-height:1.85;overflow-wrap:anywhere}
+.md h1,.md h2,.md h3,.md h4{font-family:var(--kai);line-height:1.4;margin:1.4em 0 .5em}
+.md h1{font-size:25px}
+.md h2{font-size:21px;display:inline-block;background:linear-gradient(transparent 58%,var(--hl) 58%);color:var(--ink)}
+@media (prefers-color-scheme:dark){ .md h2{background:linear-gradient(transparent 58%,#6b5d12 58%)} }
+.md h3{font-size:18px}
+.md p{margin:.55em 0}
+.md ul,.md ol{padding-left:1.4em}
+.md table{display:block;overflow-x:auto;border-collapse:collapse;max-width:100%}
+.md th,.md td{border:1px solid var(--line);padding:6px 10px}
+.md th{background:var(--sheet2)}
+.md code{background:var(--sheet2);padding:1px 5px;border-radius:4px;font-size:.92em}
+.md pre{background:var(--sheet2);padding:10px 12px;border-radius:6px;overflow-x:auto}
+.md blockquote{margin:.8em 0;padding:2px 14px;border-left:4px solid var(--hl);color:var(--muted)}
+.md .katex-display{overflow-x:auto;overflow-y:hidden;padding:2px 0}
+.opt .md p,.stem p,.cardface p{margin:0}
+/* 闪卡 */
+.deckbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;font-size:14px;color:var(--muted)}
+.card{
+  border:1.5px solid var(--ink);border-radius:16px;padding:22px 20px;min-height:200px;background:var(--sheet);
+  display:flex;flex-direction:column;gap:12px;justify-content:center;
+}
+.card .tag{font-size:13px;color:var(--muted)}
+.card .q{font:600 20px/1.6 var(--kai)}
+.card .a{border-top:1.5px dashed var(--line);padding-top:12px}
+.card .a .tag{color:var(--ok)}
+.rowbtns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.rowbtns .btn{flex:1 1 120px}
+/* 刷题 */
+.qhead{display:flex;justify-content:space-between;margin-bottom:8px;color:var(--muted);font-size:14px}
+.stem{font-size:18px;margin-bottom:14px}
+.opts{display:flex;flex-direction:column;gap:10px}
+.opt{display:flex;gap:12px;text-align:left;align-items:flex-start;border:1.5px solid var(--line);background:var(--sheet);border-radius:12px;padding:10px 12px;cursor:pointer;width:100%}
+.opt b{flex:0 0 26px;height:26px;border-radius:50%;border:1.5px solid var(--ink);display:grid;place-items:center;font-size:14px;margin-top:1px}
+.opt:hover:not(:disabled){border-color:var(--ink);background:var(--sheet2)}
+.opt:disabled{cursor:default;opacity:1}
+.opt.correct{border-color:var(--ok);background:var(--ok-soft)}
+.opt.correct b{background:var(--ok);border-color:var(--ok);color:#fff}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.opt.wrong b{background:var(--bad);border-color:var(--bad);color:#fff}
+.verdict{margin:14px 0 6px;font-weight:700}
+.verdict.ok{color:var(--ok)} .verdict.no{color:var(--bad)}
+.explain{border-left:4px solid var(--hl);padding:2px 0 2px 14px;margin:8px 0 12px}
+.score{font:700 30px/1.3 var(--kai);margin:6px 0}
+.wrong-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:28px 0 8px;padding-top:14px;border-top:1.5px dashed var(--line)}
+.wrong-head h3{margin:0;font:700 18px var(--kai)}
+details{border-bottom:1px dashed var(--line);padding:8px 0}
+summary{cursor:pointer}
+/* 问答 */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chip{border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:5px 14px;cursor:pointer;font-size:14px}
+.chip:hover{border-color:var(--ink)}
+.chatlog{display:flex;flex-direction:column;gap:12px;margin-bottom:14px}
+.msg{max-width:92%;padding:10px 14px;border-radius:10px;border:1.5px solid var(--line)}
+.msg.user{align-self:flex-end;background:var(--hl);color:var(--hl-ink);border-color:var(--hl)}
+.msg.model{align-self:flex-start;background:var(--sheet)}
+.chatbox{display:flex;gap:10px;align-items:flex-end}
+.chatbox textarea{flex:1}
+.chatbox.over{outline:2px dashed var(--ink);outline-offset:4px;border-radius:12px}
+.iconbtn{padding:0 12px;min-width:44px;display:grid;place-items:center}
+.iconbtn svg{width:20px;height:20px;display:block}
+.h2row{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.h2row h2{margin:0!important}
+.attach{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.thumb{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1.5px solid var(--line);background:var(--sheet2)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb button{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:11px;line-height:20px;padding:0;cursor:pointer}
+.thumbs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.thumbs img{max-width:160px;max-height:160px;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;display:block;background:var(--sheet2)}
+.thumbs img.big{max-width:100%;max-height:none;cursor:zoom-out}
+.msgact{margin-top:10px}
+.subhint{min-height:2.6em}
+.errline{color:var(--bad);font-size:14px;min-height:1.4em;margin:8px 0 0}
+/* 浮层 */
+.toasts{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:50;display:flex;flex-direction:column;gap:8px;width:min(92vw,420px)}
+.toast{background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:8px;display:flex;gap:10px;align-items:flex-start}
+.toast button{margin-left:auto;border:0;background:transparent;color:inherit;cursor:pointer;font-size:15px}
+.toast .ub{font-weight:700;text-decoration:underline;white-space:nowrap}
+.histbar{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+.hrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hrow .hp{flex:1 1 180px;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toast.error{background:var(--bad);color:#fff}
+.busy{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:40;background:var(--ink);color:var(--paper);
+  border-radius:999px;padding:8px 10px 8px 18px;display:flex;gap:14px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.busy .btn{border-color:var(--paper);color:var(--paper)}
+.busy .dot{width:9px;height:9px;border-radius:50%;background:var(--hl);animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.busy .dot{animation:none}.drop{transition:none}.subjects button{transition:none}}
+dialog{border:1.5px solid var(--ink);border-radius:10px;background:var(--sheet);color:var(--ink);width:min(520px,92vw);padding:0}
+dialog::backdrop{background:rgba(8,16,24,.55)}
+.dlg{padding:20px 20px 16px}
+.dlg h2{margin:0 0 12px;font:700 22px var(--kai)}
+.dlg label{display:block;margin:12px 0 4px;font-size:14px;color:var(--muted)}
+.dlg .inline{display:flex;gap:8px}
+.dlg .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+#testResult{margin-top:10px;font-size:14px;white-space:pre-wrap}
+
+/* 手机版：宽度 640px 以下才生效，电脑版不受影响 */
+@media (max-width:640px){
+  .shell{padding:10px 8px 110px}
+  .top{padding:6px 2px 10px;align-items:center}
+  .title h1{font-size:26px}
+  .title p{font-size:12.5px}
+  .tab{padding:8px 14px}
+  .sheet{padding:16px 14px 22px var(--pl);min-height:280px}
+  .sheet h2{font-size:19px}
+  .btn{min-height:44px}
+  .btn.small{min-height:38px;padding:6px 12px}
+  .h2row{flex-wrap:wrap}
+  .controls{gap:10px}
+  .controls label{flex:1 1 42%}
+  .controls select{width:100%}
+  .controls .grow{flex:1 1 100%}
+  .rowbtns .btn{flex:1 1 100px}
+  .card{padding:16px 14px;min-height:170px}
+  .card .q{font-size:18px}
+  .stem{font-size:17px}
+  .opt{padding:12px}
+  .msg{max-width:97%}
+  .chatbox{gap:8px}
+  .chips{gap:6px}
+  .histbar .btn{flex:1 1 auto}
+  .bar .btn.small{flex:1 1 auto}
+  .file{flex-wrap:wrap}
+  .hrow .hp{flex-basis:100%;order:3;white-space:normal}
+  .md h1{font-size:22px}
+  .md h2{font-size:19px}
+  .md{line-height:1.8}
+  dialog{width:94vw;max-height:88vh;overflow:auto}
+  .dlg{padding:16px 14px 14px}
+  .dlg .actions .btn{flex:1 1 auto}
+  .toasts{top:calc(8px + env(safe-area-inset-top,0px))}
+  .busy{width:92vw;justify-content:space-between;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:380px){ :root{--mx:8px;--pl:18px} .title h1{font-size:23px} }
+@media print{
+  body{background:#fff;color:#000}
+  .aurora{display:none}
+  .no-print{display:none!important}
+  .panel:not(.active){display:none!important}
+  .sheet{border:0;background:#fff;padding:0;min-height:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+  .shell{padding:0}
+}
+</style>
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div id="toasts" class="toasts no-print" aria-live="polite"></div>
+<div id="busy" class="busy no-print" role="status" hidden><span class="dot"></span><span id="busyText"></span><button id="btnCancel" class="btn small">取消</button></div>
+
+<div class="shell">
+  <header class="top no-print">
+    <div class="title"><h1>考前助手</h1><p>把资料交给 AI，整理成笔记、闪卡和模拟题</p></div>
+    <button id="btnSettings" class="btn line">设置</button>
+  </header>
+
+  <nav class="subjects no-print" id="subjectSeg" aria-label="学科"></nav>
+
+  <nav class="tabs no-print" id="tabs" role="tablist" aria-label="功能">
+    <button class="tab active" role="tab" data-tab="files" aria-selected="true">资料</button>
+    <button class="tab" role="tab" data-tab="notes" aria-selected="false">笔记</button>
+    <button class="tab" role="tab" data-tab="cards" aria-selected="false">闪卡</button>
+    <button class="tab" role="tab" data-tab="quiz" aria-selected="false">刷题</button>
+    <button class="tab" role="tab" data-tab="chat" aria-selected="false">问答</button>
+  </nav>
+
+  <main>
+    <!-- 资料 -->
+    <section class="sheet panel active" id="panel-files" role="tabpanel">
+      <div id="keyBanner" class="notice warn no-print" hidden>
+        <strong>先设置 API key</strong>
+        <p>这个工具用你自己的 Gemini key 读资料，可以免费申请：打开 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>，创建并复制 key，回到这里点「去设置」粘贴。</p>
+        <button class="btn primary" id="btnBannerSettings">去设置</button>
+      </div>
+      <div class="notice error" id="err-files" hidden></div>
+      <div class="h2row"><h2 id="upTitle">上传资料</h2><span class="spacer"></span><button class="btn small line no-print" id="btnShare" type="button" hidden>生成分享版</button><button class="btn small line no-print" id="btnEditSubject" data-gen type="button">学科设置</button></div>
+      <label class="drop" id="drop" for="fileInput">
+        点这里选择文件，或把文件拖进来
+        <small>PDF、图片、Excel、Word（.docx）、txt / md。PPT 请先另存为 PDF。</small>
+        <small>单个文件最大 2 GB；超过 30 MB 的会自动走 Google 的大文件通道。</small>
+      </label>
+      <input class="vh" type="file" id="fileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.markdown,.csv,.xlsx,.xls,.docx">
+      <ul id="fileList" class="files"></ul>
+      <p id="fileSummary" class="muted"></p>
+      <div class="bar no-print"><button class="btn small line" id="btnClearFiles" type="button" hidden>清空这个学科的全部资料</button></div>
+      <p class="muted fine">勾选的资料会在每次生成时一起发给 Google 的 Gemini。资料和 key 只保存在这台设备的浏览器里，这个网页本身不会把它们传到别处。免费版的 Gemini 可能用你发送的内容改进 Google 的产品，请不要上传带个人隐私的文件。</p>
+    </section>
+
+    <!-- 笔记 -->
+    <section class="sheet panel" id="panel-notes" role="tabpanel" hidden>
+      <div class="controls no-print">
+        <label>详细程度
+          <select id="noteDetail"><option>简明</option><option selected>标准</option><option>详细</option></select>
+        </label>
+        <label class="grow">重点章节或主题（可不填）
+          <input id="noteFocus" type="text" placeholder="例如：第 3 章 导数的应用">
+        </label>
+        <button class="btn primary" id="btnNotes" data-gen>生成笔记</button>
+      </div>
+      <div class="notice error" id="err-notes" hidden></div>
+      <div class="bar no-print" id="notesBar" hidden>
+        <span class="muted fine" id="notesMeta"></span><span class="spacer"></span>
+        <button class="btn small line" id="btnCopyNotes">复制</button>
+        <button class="btn small line" id="btnDelNotes">删除这份笔记</button>
+        <button class="btn small line" id="btnDownNotes">下载 .md</button>
+        <button class="btn small line" id="btnPrintNotes">打印 / 存为 PDF</button>
+      </div>
+      <article id="notesOut" class="md"></article>
+      <div class="bar no-print histbar" id="hb-notes"></div>
+      <p class="muted fine no-print">AI 可能算错或漏写，考前请和课本、老师给的答案核对。</p>
+    </section>
+
+    <!-- 闪卡 -->
+    <section class="sheet panel" id="panel-cards" role="tabpanel" hidden>
+      <div class="controls no-print">
+        <label>数量
+          <select id="cardCount"><option>10</option><option selected>20</option><option>30</option></select>
+        </label>
+        <button class="btn primary" id="btnCards" data-gen>生成闪卡</button>
+      </div>
+      <div class="notice error" id="err-cards" hidden></div>
+      <div id="cardsArea"></div>
+      <div class="bar no-print histbar" id="hb-cards"></div>
+    </section>
+
+    <!-- 刷题 -->
+    <section class="sheet panel" id="panel-quiz" role="tabpanel" hidden>
+      <div class="controls no-print">
+        <label>题数
+          <select id="quizCount"><option>5</option><option selected>10</option><option>15</option><option>20</option></select>
+        </label>
+        <label>题型
+          <select id="quizType"><option>混合</option><option>只出选择题</option><option>只出简答 / 计算题</option></select>
+        </label>
+        <label>难度
+          <select id="quizDiff"><option>基础</option><option selected>中等</option><option>拔高</option></select>
+        </label>
+        <button class="btn primary" id="btnQuiz" data-gen>生成模拟题</button>
+      </div>
+      <div class="notice error" id="err-quiz" hidden></div>
+      <div id="quizArea"></div>
+      <div id="wrongArea"></div>
+      <div class="bar no-print histbar" id="hb-quiz"></div>
+      <p class="muted fine no-print">题目和答案都由 AI 生成，重要的答案请自己再核对一遍。</p>
+    </section>
+
+    <!-- 问答 -->
+    <section class="sheet panel" id="panel-chat" role="tabpanel" hidden>
+      <div class="chips no-print" id="chips"></div>
+      <div class="notice error" id="err-chat" hidden></div>
+      <div id="chatLog" class="chatlog"></div>
+      <div class="attach no-print" id="attachStrip" hidden></div>
+      <div class="chatbox no-print" id="chatbox">
+        <button class="btn line iconbtn" id="btnAttach" type="button" aria-label="拍照或选择图片" title="拍照或选择图片（也可以直接粘贴、拖入）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.6-2.4h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.6"/></svg></button>
+        <input class="vh" type="file" id="chatImg" accept="image/*" multiple>
+        <textarea id="chatInput" rows="2" placeholder="问点什么，或点左边的相机拍一道题（Ctrl + Enter 发送）"></textarea>
+        <button class="btn primary" id="btnSend" data-gen>发送</button>
+      </div>
+      <div class="bar no-print" style="margin-top:10px"><button class="btn small line" data-gen id="btnRegenChat">🔄 重新回答</button><button class="btn small line" id="btnUndoChat">↩ 撤回上一问</button><button class="btn small line" id="btnClearChat">清空对话</button></div>
+    </section>
+  </main>
+</div>
+
+<dialog id="dlg">
+  <div class="dlg">
+    <h2>设置</h2>
+    <label for="keyInput">Gemini API key</label>
+    <div class="inline">
+      <input id="keyInput" type="password" autocomplete="off" spellcheck="false" placeholder="粘贴你的 key">
+      <button class="btn line" id="btnShowKey" type="button">显示</button>
+    </div>
+    <p class="muted fine">key 只保存在这台设备的浏览器里，请求直接发给 Google。不要把 key 发给别人，也不要写进网页代码或上传到 GitHub。</p>
+    <label for="modelSel">模型</label>
+    <select id="modelSel">
+      <option value="gemini-3.6-flash">gemini-3.6-flash（推荐）</option>
+      <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite（更快，额度更宽松）</option>
+      <option value="__custom">其他（自己填写）</option>
+    </select>
+    <input id="modelCustom" type="text" placeholder="填写模型名" style="margin-top:8px" hidden>
+    <label>备份与恢复</label>
+    <div class="inline"><button class="btn line" id="btnBackup" type="button">备份到文件</button><button class="btn line" id="btnImport" type="button">从文件导入</button></div>
+    <input class="vh" type="file" id="importInput" accept=".json,application/json">
+    <p class="muted fine">备份包含笔记、闪卡、题目、错题本、对话和历史版本，不含 API key。</p>
+    <div id="testResult" role="status"></div>
+    <div class="actions">
+      <button class="btn" id="btnTest" type="button">测试连接</button>
+      <button class="btn primary" id="btnSave" type="button">保存</button>
+      <button class="btn line" id="btnCloseDlg" type="button">关闭</button>
+      <span class="spacer"></span>
+      <button class="btn line small" id="btnWipe" type="button">清除所有数据</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlgHist">
+  <div class="dlg">
+    <h2 id="hTitle">历史版本</h2>
+    <ul id="hList" class="files"></ul>
+    <p class="muted fine">每类最多保留最近 10 版。恢复某一版时，当前这一版会自动存进历史，不会丢。</p>
+    <div class="actions"><button class="btn line" id="btnHClose" type="button">关闭</button></div>
+  </div>
+</dialog>
+
+<dialog id="dlgFull">
+  <div class="dlg">
+    <h2 id="fTitle">历史版本已满</h2>
+    <p class="muted fine">最多保留 10 版。要生成新的一版，请先选一版删掉（比如你觉得没用的那一版）：</p>
+    <ul id="fList" class="files"></ul>
+    <div class="actions"><button class="btn line" id="btnFCancel" type="button">取消，先不生成</button></div>
+  </div>
+</dialog>
+
+<dialog id="dlgSubject">
+  <div class="dlg">
+    <h2 id="subTitle">添加学科</h2>
+    <label for="subName">名称（最多 8 个字）</label>
+    <input id="subName" type="text" maxlength="8" autocomplete="off" placeholder="例如：英语、历史、政治">
+    <label>类型（决定 AI 怎么整理笔记、出题）</label>
+    <div class="seg" id="subTypeSeg">
+      <button type="button" data-type="sci" aria-pressed="false">理科</button>
+      <button type="button" data-type="arts" aria-pressed="false">文科</button>
+      <button type="button" data-type="lang" aria-pressed="false">语言</button>
+      <button type="button" data-type="gen" aria-pressed="false">通用</button>
+    </div>
+    <p class="muted fine subhint" id="subTypeHint"></p>
+    <label>分享</label>
+    <div class="seg" id="subPubSeg">
+      <button type="button" data-pub="0" aria-pressed="true">Private 仅自己</button>
+      <button type="button" data-pub="1" aria-pressed="false">Public 资料可分享</button>
+    </div>
+    <p class="muted fine subhint" id="subPubHint"></p>
+    <div class="errline" id="subErr" role="alert"></div>
+    <div class="actions">
+      <button class="btn primary" id="btnSubSave" type="button">添加</button>
+      <button class="btn line" id="btnSubCancel" type="button">取消</button>
+      <span class="spacer"></span>
+      <button class="btn line small" id="btnSubDelete" type="button" hidden>删除这个学科</button>
+    </div>
+  </div>
+</dialog>
+
+<script id="shared-data" type="application/json">null</script>
+<script>
+'use strict';
+const $ = (s, el) => (el || document).querySelector(s);
+const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
+const LS_KEY = 'exam-helper-v1';
+const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const MAMMOTH_URL = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
+
+class AppError extends Error { constructor(m, code) { super(m); this.name = 'AppError'; this.code = code; } }
+
+// <<PURE-START>>
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function fmtSize(n) {
+  if (n >= 1048576) return (n / 1048576).toFixed(1) + ' MB';
+  if (n >= 1024) return Math.round(n / 1024) + ' KB';
+  return n + ' B';
+}
+
+function shortText(s, n) {
+  const t = String(s).replace(/\$+/g, '').replace(/\s+/g, ' ').trim();
+  return t.length > (n || 50) ? t.slice(0, n || 50) + '…' : t;
+}
+
+// 先把公式换成占位符，避免被 Markdown 解析器弄坏
+function protectMath(src) {
+  const stash = [];
+  const put = (t, d) => { stash.push({ t: t.trim(), d: d }); return '@@M' + (stash.length - 1) + '@@'; };
+  let s = String(src);
+  s = s.replace(/\$\$([\s\S]+?)\$\$/g, (m, t) => put(t, true));
+  s = s.replace(/\\\[([\s\S]+?)\\\]/g, (m, t) => put(t, true));
+  s = s.replace(/\\\(([\s\S]+?)\\\)/g, (m, t) => put(t, false));
+  s = s.replace(/\$([^\s$](?:[^$\n]*?[^\s$])?)\$/g, (m, t) => put(t, false));
+  return { text: s, stash: stash };
+}
+
+function restoreMath(html, stash) {
+  return html.replace(/@@M(\d+)@@/g, (m, i) => {
+    const it = stash[+i];
+    if (!it) return m;
+    if (typeof katex !== 'undefined') {
+      try { return katex.renderToString(it.t, { displayMode: it.d, throwOnError: false, output: 'html', strict: 'ignore' }); } catch (e) { /* fall through */ }
+    }
+    return '<code>' + esc(it.t) + '</code>';
+  });
+}
+
+function renderMarkdown(md) {
+  const p = protectMath(md || '');
+  let html;
+  if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+    try { html = DOMPurify.sanitize(marked.parse(p.text, { gfm: true, breaks: true })); }
+    catch (e) { html = '<p>' + esc(p.text).replace(/\n/g, '<br>') + '</p>'; }
+  } else {
+    html = '<p>' + esc(p.text).replace(/\n/g, '<br>') + '</p>';
+  }
+  return restoreMath(html, p.stash);
+}
+
+function parseCards(text) {
+  const out = [];
+  const reQ = /(?:^|\n)[ \t*#>_-]*Q\s*\**\s*[:：]\s*\**[ \t]*/;
+  const reA = /(?:^|\n)[ \t*#>_-]*A\s*\**\s*[:：]\s*\**[ \t]*/;
+  const blocks = String(text).split(/@@CARD\b/).slice(1);
+  for (const b of blocks) {
+    const body = b.split(/@@END\b/)[0];
+    const mq = reQ.exec(body);
+    if (!mq) continue;
+    const rest = body.slice(mq.index + mq[0].length);
+    const ma = reA.exec(rest);
+    if (!ma) continue;
+    const q = rest.slice(0, ma.index).trim();
+    const a = rest.slice(ma.index + ma[0].length).trim();
+    if (q && a) out.push({ q: q, a: a, st: 0 });
+  }
+  return out;
+}
+
+function parseQuiz(text) {
+  const out = [];
+  const blocks = String(text).split(/@@Q\b/).slice(1);
+  for (const b of blocks) {
+    const body = b.split(/@@END\b/)[0];
+    const q = { type: 'short', stem: '', opts: {}, answer: '', explain: '' };
+    let cur = null;
+    for (const raw of body.split('\n')) {
+      const line = raw.replace(/\r$/, '');
+      const l = line.replace(/^[ \t*#>_-]+/, '');
+      let m;
+      if ((m = l.match(/^TYPE\s*\**\s*[:：]\s*\**\s*(.*)$/i))) { q.type = /mcq|选择/i.test(m[1]) ? 'mcq' : 'short'; cur = null; continue; }
+      if ((m = l.match(/^STEM\s*\**\s*[:：]\s*\**\s*(.*)$/i))) { cur = 'stem'; q.stem = m[1]; continue; }
+      if ((m = l.match(/^OPT_([A-D])\s*\**\s*[:：]\s*\**\s*(.*)$/i))) { cur = 'opt' + m[1].toUpperCase(); q.opts[m[1].toUpperCase()] = m[2]; continue; }
+      if ((m = l.match(/^ANSWER\s*\**\s*[:：]\s*\**\s*(.*)$/i))) { cur = 'answer'; q.answer = m[1]; continue; }
+      if ((m = l.match(/^EXPLAIN\s*\**\s*[:：]\s*\**\s*(.*)$/i))) { cur = 'explain'; q.explain = m[1]; continue; }
+      if (cur === 'stem') q.stem += '\n' + line;
+      else if (cur === 'answer') q.answer += '\n' + line;
+      else if (cur === 'explain') q.explain += '\n' + line;
+      else if (cur && cur.indexOf('opt') === 0) q.opts[cur.charAt(3)] += '\n' + line;
+    }
+    q.stem = q.stem.trim(); q.answer = q.answer.trim(); q.explain = q.explain.trim();
+    Object.keys(q.opts).forEach(k => { q.opts[k] = q.opts[k].trim(); });
+    if (!q.stem) continue;
+    if (q.type === 'mcq') {
+      const letter = (q.answer.match(/[A-D]/i) || [''])[0].toUpperCase();
+      if (Object.keys(q.opts).length >= 2 && letter && q.opts[letter]) q.answer = letter;
+      else q.type = 'short';
+    }
+    if (q.type === 'short') q.opts = {};
+    if (!q.answer) continue;
+    out.push(q);
+  }
+  return out;
+}
+
+function explainError(status, data) {
+  const raw = (data && data.error && data.error.message) || '';
+  const code = (data && data.error && data.error.status) || '';
+  if (status === 400 && /API key|API_KEY/i.test(raw + ' ' + code)) return 'API key 无效。请到「设置」重新粘贴（前后不要有空格），或到 aistudio.google.com/apikey 重新生成一个。';
+  if (status === 400 && /location|not supported in your/i.test(raw)) return '当前的网络或地区不能调用 Gemini：' + raw;
+  if (status === 401 || status === 403) return 'key 没有权限，或已被限制（' + status + '）。' + raw;
+  if (status === 404) return '找不到这个模型。请到「设置」换成 gemini-3.5-flash-lite，或填入新的模型名。';
+  if (status === 413) return '资料太大了。请取消勾选一些文件，或把 PDF 拆小后再试。';
+  if (status === 429) {
+    const m = raw.match(/retry in ([\d.]+)s/i);
+    return '请求太频繁，或免费额度用完了。' + (m ? '大约 ' + Math.ceil(+m[1]) + ' 秒后可以重试。' : '请等 1 分钟再试；如果一直这样，可能是今天的免费额度用完了。') + '也可以到「设置」换成 gemini-3.5-flash-lite。';
+  }
+  if (status >= 500) return 'Google 的服务暂时繁忙（' + status + '），稍后再试。';
+  return '出错了（' + status + '）：' + (raw || '未知错误');
+}
+// <<PURE-END>>
+
+/* ---------- 状态 ---------- */
+const DEFAULT_SUBJECTS = () => [
+  { name: '数学', type: 'sci', pal: 0, key: '数学' },
+  { name: '物理', type: 'sci', pal: 1, key: '物理' },
+  { name: '化学', type: 'sci', pal: 2, key: '化学' },
+  { name: '生物', type: 'sci', pal: 3, key: '生物' },
+  { name: '其他', type: 'gen', pal: 4, key: '其他' }
+];
+const TYPES = { sci: '理科', arts: '文科', lang: '语言', gen: '通用' };
+const TYPE_HINT = {
+  sci: '公式用 LaTeX，重视推导、解题步骤和计算题。',
+  arts: '重视概念、人物事件、时间线和论述要点，不使用公式。',
+  lang: '重视词汇、语法、例句和翻译，外语例句附中文翻译。',
+  gen: '不做学科假设，按资料内容整理。'
+};
+const SUMMARY_CHIP = ['总结核心内容', '用一页纸总结这份资料的核心内容。'];
+const WEAK_CHIP = ['易考易错点', '列出这份资料里最容易考、最容易错的 10 个点。'];
+const TYPE_CFG = {
+  sci: {
+    role: '一位严谨的理科备考助手',
+    rules: ['数学公式一律用 LaTeX：行内用 $...$，独立公式用 $$...$$。', '资料中的图、表、示意图，请用文字转述其关键信息。'],
+    noteItem: '每个知识点包含：定义或结论、关键公式（LaTeX）、适用条件、典型例题或应用（资料里有才写）、易错点。',
+    noteTail: '最后加「考前速记清单」（最重要的 10 到 15 条）和「公式速查表」。',
+    cardHint: '每张卡正面是一个问题（概念、公式的适用条件、反应现象、判断题等都可以），背面是简洁准确的答案（需要时写公式，用 LaTeX）。',
+    shortName: '简答 / 计算题', shortAsk: '简答/计算题',
+    quizCheck: '答案必须正确，计算题请仔细演算并核对；选择题只有一个正确选项。',
+    chips: [SUMMARY_CHIP, WEAK_CHIP, ['公式速查表', '把资料里所有重要公式整理成一张速查表，注明适用条件。']]
+  },
+  arts: {
+    role: '一位认真的文科备考助手',
+    rules: ['不要使用 LaTeX；需要时用 Markdown 列表或表格。', '资料中的图、表、地图、示意图，请用文字转述其关键信息。'],
+    noteItem: '每个知识点包含：核心概念或结论、背景与要点、关键人物 / 事件 / 时间（资料里有才写）、常见考法与答题思路、易混点。',
+    noteTail: '最后加「考前速记清单」（最重要的 10 到 15 条）和「时间线 / 要点对照表」（资料里有相关内容才写）。',
+    cardHint: '每张卡正面是一个问题（概念辨析、事件的时间和意义、人物与成就、原因和影响等都可以），背面是简洁准确、可以直接背诵的答案。',
+    shortName: '简答 / 论述题', shortAsk: '简答/论述题',
+    quizCheck: '答案必须有依据，史实、时间、人名要准确；选择题只有一个正确选项。',
+    chips: [SUMMARY_CHIP, WEAK_CHIP, ['时间线 / 对照表', '把资料里的重要事件、人物或概念整理成时间线或对照表。']]
+  },
+  lang: {
+    role: '一位耐心的语言学习备考助手',
+    rules: ['不要使用 LaTeX。词汇和例句用 Markdown 表格或列表整理，外语例句后附中文翻译。', '资料里的外语内容保持原文，讲解用简体中文。'],
+    noteItem: '每个知识点包含：词汇（词性、释义、例句）、语法规则与例句、易混辨析、常见错误（资料里有才写）。',
+    noteTail: '最后加「高频词汇表」（Markdown 表格）和「考前速记清单」（最重要的 10 到 15 条）。',
+    cardHint: '每张卡正面是一个单词、短语、语法点或翻译题，背面是释义、词性和一个带中文翻译的例句。',
+    shortName: '填空 / 翻译题', shortAsk: '填空/翻译题',
+    quizCheck: '答案必须正确，例句和语法要地道；选择题只有一个正确选项。',
+    chips: [SUMMARY_CHIP, ['高频词汇表', '把资料里的高频词汇和短语整理成表格：词、词性、释义、例句。'], ['易混词辨析', '挑出资料里最容易混淆的词或语法点，逐组辨析并给例句。']]
+  },
+  gen: {
+    role: '一位可靠的备考助手',
+    rules: ['如需公式，用 LaTeX：行内用 $...$，独立公式用 $$...$$。', '资料中的图、表、示意图，请用文字转述其关键信息。'],
+    noteItem: '每个知识点包含：定义或结论、要点、典型例题或应用（资料里有才写）、易错点。',
+    noteTail: '最后加「考前速记清单」（最重要的 10 到 15 条）。',
+    cardHint: '每张卡正面是一个问题（概念、要点、判断题等都可以），背面是简洁准确的答案。',
+    shortName: '简答题', shortAsk: '简答题',
+    quizCheck: '答案必须正确；选择题只有一个正确选项。',
+    chips: [SUMMARY_CHIP, WEAK_CHIP, ['要点速查表', '把资料里的重要内容整理成一张速查表。']]
+  }
+};
+const PER = () => ({ notes: '', notesMeta: '', cards: [], quiz: [], qi: 0, qres: {}, wrong: [], chat: [] });
+const PER_KEYS = Object.keys(PER());
+const BAD_NAMES = ['__proto__', 'constructor', 'prototype'];
+const MAX_SUBJECTS = 12;
+// 每个学科有自己的一份：笔记、闪卡、题目、错题本、对话。S.notes 这类写法会自动读写当前学科的那一份。
+function mkState() {
+  const st = { settings: { key: '', model: 'gemini-3.6-flash', subject: '数学' }, subjects: DEFAULT_SUBJECTS(), data: {} };
+  st.subjects.forEach(sj => { st.data[sj.name] = PER(); });
+  PER_KEYS.forEach(k => Object.defineProperty(st, k, {
+    get() { return st.data[st.settings.subject][k]; },
+    set(v) { st.data[st.settings.subject][k] = v; },
+    enumerable: false
+  }));
+  return st;
+}
+let S = mkState();
+let files = [];
+let busy = false, ctrl = null, timer = null, busyLabel = '', busyNote = '', busyStart = 0;
+let cardFilter = 'all', cardPos = 0, cardShown = false;
+let saveT = null;
+const subjNames = () => S.subjects.map(x => x.name);
+const curSubj = () => S.subjects.find(x => x.name === S.settings.subject) || S.subjects[0];
+const cfg = () => TYPE_CFG[curSubj().type] || TYPE_CFG.gen;
+
+function loadState() {
+  S = mkState();
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    S.settings = Object.assign(S.settings, o.settings || {});
+    if (Array.isArray(o.subjects) && o.subjects.length) {
+      const seen = {}, list = [];
+      o.subjects.forEach(x => {
+        if (!x || typeof x.name !== 'string') return;
+        const name = x.name.trim().slice(0, 12);
+        if (!name || seen[name] || BAD_NAMES.indexOf(name) >= 0) return;
+        seen[name] = 1;
+        list.push({ name: name, type: TYPES[x.type] ? x.type : 'gen', pal: (Number.isInteger(x.pal) && x.pal >= 0 && x.pal <= 7) ? x.pal : 0, key: typeof x.key === 'string' ? x.key : undefined, pub: !!x.pub, shared: !!x.shared });
+      });
+      if (list.length) S.subjects = list;
+    }
+    if (subjNames().indexOf(S.settings.subject) < 0) S.settings.subject = S.subjects[0].name;
+    const src = {};
+    if (o.data && typeof o.data === 'object') subjNames().forEach(n => { src[n] = o.data[n]; });
+    else src[S.settings.subject] = o; // 最早的版本只有一份数据：归到当时选中的学科
+    S.data = {};
+    subjNames().forEach(n => {
+      const d = PER(), v = src[n];
+      if (v && typeof v === 'object') {
+        PER_KEYS.forEach(k => { if (v[k] !== undefined && v[k] !== null) d[k] = v[k]; });
+        ['cards', 'quiz', 'wrong', 'chat'].forEach(k => { if (!Array.isArray(d[k])) d[k] = []; });
+        if (!d.qres || typeof d.qres !== 'object') d.qres = {};
+        if (typeof d.qi !== 'number') d.qi = 0;
+        if (typeof d.notes !== 'string') d.notes = '';
+        if (typeof d.notesMeta !== 'string') d.notesMeta = '';
+      }
+      S.data[n] = d;
+    });
+  } catch (e) { S = mkState(); }
+}
+function save() {
+  clearTimeout(saveT);
+  saveT = setTimeout(() => { try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) { /* 存储满了就算了 */ } }, 200);
+}
+
+/* ---------- 文件和图片持久化 (IndexedDB，失败就只留在内存里) ---------- */
+let _db = null;
+function idb() {
+  if (_db) return Promise.resolve(_db);
+  return new Promise((res, rej) => {
+    try {
+      const r = indexedDB.open('exam-helper', 3);
+      r.onupgradeneeded = () => {
+        const db = r.result;
+        if (!db.objectStoreNames.contains('files')) db.createObjectStore('files', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('imgs')) db.createObjectStore('imgs', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('hist')) db.createObjectStore('hist', { keyPath: 'id' });
+      };
+      r.onsuccess = () => { _db = r.result; res(_db); };
+      r.onerror = () => rej(r.error);
+    } catch (e) { rej(e); }
+  });
+}
+function idbTx(store, mode, fn) {
+  return idb().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(store, mode);
+    const rq = fn(tx.objectStore(store));
+    tx.oncomplete = () => res(rq && rq.result);
+    tx.onerror = () => rej(tx.error);
+    tx.onabort = () => rej(tx.error);
+  }));
+}
+const idbAll = () => idbTx('files', 'readonly', st => st.getAll()).then(r => r || []).catch(() => []);
+const idbPut = r => idbTx('files', 'readwrite', st => st.put(r)).catch(() => {});
+const idbDel = id => idbTx('files', 'readwrite', st => st.delete(id)).catch(() => {});
+const idbClear = () => Promise.all(['files', 'imgs', 'hist'].map(n => idbTx(n, 'readwrite', st => st.clear()).catch(() => {})));
+const imgPut = r => idbTx('imgs', 'readwrite', st => st.put(r)).catch(() => {});
+const imgDel = id => idbTx('imgs', 'readwrite', st => st.delete(id)).catch(() => {});
+const imgKeys = () => idbTx('imgs', 'readonly', st => st.getAllKeys()).then(r => r || []).catch(() => []);
+const imgCache = {};
+async function getImg(id) {
+  if (imgCache[id]) return imgCache[id];
+  const r = await idbTx('imgs', 'readonly', st => st.get(id)).catch(() => null);
+  if (r) imgCache[id] = r;
+  return r || null;
+}
+// 清理没有任何笔记、错题或题目引用的图片
+async function gcImgs() {
+  const used = new Set();
+  const add = list => (list || []).forEach(m => (m.imgs || []).forEach(i => used.add(i)));
+  S.subjects.forEach(sj => { const d = S.data[sj.name]; if (d) { add(d.chat); add(d.wrong); add(d.quiz); } });
+  for (const k of await imgKeys()) if (!used.has(k)) { delete imgCache[k]; await imgDel(k); }
+}
+
+/* ---------- 小工具 ---------- */
+function toast(msg, kind) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + (kind || '');
+  const sp = document.createElement('span'); sp.textContent = msg; t.appendChild(sp);
+  const x = document.createElement('button'); x.textContent = '✕'; x.setAttribute('aria-label', '关闭'); x.onclick = () => t.remove();
+  t.appendChild(x);
+  $('#toasts').appendChild(t);
+  if (kind !== 'error') setTimeout(() => t.remove(), 3500);
+}
+function undoToast(msg, undo, after) {
+  const t = document.createElement('div'); t.className = 'toast';
+  const sp = document.createElement('span'); sp.textContent = msg; t.appendChild(sp);
+  let done = false;
+  const u = document.createElement('button'); u.className = 'ub'; u.textContent = '撤销';
+  u.onclick = () => { if (done) return; done = true; t.remove(); undo(); };
+  t.appendChild(u); $('#toasts').appendChild(t);
+  setTimeout(() => { if (!done) { done = true; t.remove(); if (after) after(); } }, 8000);
+}
+function setErr(panel, msg) {
+  const el = $('#err-' + panel);
+  if (!el) return;
+  el.textContent = msg || '';
+  el.hidden = !msg;
+}
+function loadScript(url) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = url; s.onload = () => res(); s.onerror = () => rej(new AppError('组件加载失败，请检查网络后重试。'));
+    document.head.appendChild(s);
+  });
+}
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); toast('已复制'); }
+  catch (e) {
+    const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('已复制'); } catch (_) { toast('复制失败，请手动选择文字', 'error'); }
+    ta.remove();
+  }
+}
+function download(name, text) {
+  const b = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+}
+
+/* ---------- 忙碌状态 ---------- */
+function paintBusy() {
+  const s = Math.floor((Date.now() - busyStart) / 1000);
+  $('#busyText').textContent = busyLabel + '… ' + s + ' 秒' + (busyNote ? '（' + busyNote + '）' : '');
+}
+function setBusyUI(on, label) {
+  $$('[data-gen]').forEach(b => { b.disabled = on; });
+  $('#busy').hidden = !on;
+  clearInterval(timer);
+  if (on) { busyLabel = label; busyNote = ''; busyStart = Date.now(); paintBusy(); timer = setInterval(paintBusy, 1000); }
+}
+async function run(panel, label, task) {
+  if (busy) return;
+  setErr(panel, '');
+  busy = true; ctrl = new AbortController(); setBusyUI(true, label);
+  try { await task(ctrl.signal); }
+  catch (e) {
+    if (e && e.name === 'AbortError') toast('已取消');
+    else setErr(panel, (e && e.message) || String(e));
+  } finally { busy = false; ctrl = null; setBusyUI(false); renderHistBars(); }
+}
+
+/* ---------- Gemini ---------- */
+async function callGemini(opts) {
+  const key = (S.settings.key || '').trim();
+  if (!key) throw new AppError('请先在「设置」里填入 Gemini API key。');
+  const model = (S.settings.model || '').trim() || 'gemini-3.6-flash';
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key);
+  const body = { contents: opts.contents, generationConfig: { maxOutputTokens: opts.maxTokens || 32768 } };
+  if (opts.system) body.systemInstruction = { parts: [{ text: opts.system }] };
+  let attempt = 0;
+  for (;;) {
+    const payload = JSON.stringify(body);
+    if (payload.length > REQUEST_MAX) throw new AppError('这次要发送的内容太大了（超过约 95 MB）。请取消勾选一些文件，或把资料拆成几次来问。');
+    let res;
+    try {
+      res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, signal: opts.signal });
+    } catch (e) {
+      if (e && e.name === 'AbortError') throw e;
+      throw new AppError('网络请求失败。请检查网络；如果在需要特殊网络才能访问 Google 的地区，请先连好网络再试。');
+    }
+    let data = null;
+    try { data = await res.json(); } catch (e) { data = null; }
+    if (!res.ok) {
+      const msg = (data && data.error && data.error.message) || '';
+      if (res.status === 400 && /max.?output.?tokens|output token/i.test(msg) && body.generationConfig.maxOutputTokens > 8192) {
+        body.generationConfig.maxOutputTokens = 8192; continue;
+      }
+      if ((res.status === 503 || res.status === 500) && attempt < 2) {
+        attempt++; busyNote = '服务繁忙，第 ' + attempt + ' 次自动重试';
+        await new Promise(r => setTimeout(r, 3000 * attempt));
+        busyNote = ''; continue;
+      }
+      throw new AppError(explainError(res.status, data));
+    }
+    const cand = data && data.candidates && data.candidates[0];
+    if (!cand) {
+      const br = data && data.promptFeedback && data.promptFeedback.blockReason;
+      throw new AppError(br ? '请求被拦截了（' + br + '）。换一份资料或调整要求再试。' : '模型没有返回内容，请重试。');
+    }
+    const parts = (cand.content && cand.content.parts) || [];
+    const text = parts.filter(p => !p.thought && typeof p.text === 'string').map(p => p.text).join('');
+    if (!text.trim()) throw new AppError('模型没有返回文字内容' + (cand.finishReason ? '（' + cand.finishReason + '）' : '') + '，请重试。', 'EMPTY');
+    return { text: text, truncated: cand.finishReason === 'MAX_TOKENS' };
+  }
+}
+
+const BUILTIN_HINTS = {
+  '数学': '注意定理的条件、推导步骤、典型题型与解题套路、常见计算错误。',
+  '物理': '注意物理量与单位、公式适用条件、受力图/电路图/运动图像的文字化描述、典型模型。',
+  '化学': '注意方程式配平与反应条件、反应类型与现象、结构式和装置图的文字描述、常考实验与计算。',
+  '生物': '注意概念定义、过程与机制（用步骤列出）、结构图的文字描述、遗传概率计算与实验设计要点。'
+};
+function systemPrompt(opts) {
+  const sj = curSubj(), c = cfg(), o = opts || {};
+  return [
+    '你是' + c.role + '，当前学科：' + sj.name + '。',
+    o.noMaterials
+      ? '用户这次没有上传资料，请直接根据用户的问题和图片，用本学科知识讲解；不确定的地方要明确说明。'
+      : '只依据用户提供的资料作答；资料里没有的内容，明确写“资料未涉及”，不要编造。',
+    o.images ? '用户附上了照片：请先准确读出图中的题目或内容，再讲解或解答；字迹看不清的地方要说明，不要猜。' : '',
+    (o.images && !o.noMaterials) ? '照片里的题目如果资料里没有对应内容，也请直接解答，并注明“这部分不在资料里”。' : ''
+  ].concat(c.rules, [
+    '引用资料时在句末标注【文件名 第N页】；无法确定页码时只写文件名。',
+    '使用简体中文，表达准确简洁。',
+    BUILTIN_HINTS[sj.key] || ''
+  ]).filter(Boolean).join('\n');
+}
+function subjFiles() { return files.filter(f => f.subject === S.settings.subject); }
+async function gatherContext(optional, signal) {
+  const sel = subjFiles().filter(f => f.selected);
+  if (!sel.length) {
+    if (optional) return { parts: [], count: 0 };
+    throw new AppError('请先在「资料」页上传并勾选至少一份「' + S.settings.subject + '」资料。');
+  }
+  await ensureBudget(sel, signal);
+  await refreshRemote(sel, signal);
+  const parts = [{ text: '以下是我的学习资料（共 ' + sel.length + ' 份）。' }];
+  for (const f of sel) {
+    if (f.kind === 'inline') {
+      parts.push({ text: '【资料：' + f.name + '】' });
+      parts.push({ inlineData: { mimeType: f.mime, data: f.data } });
+    } else if (f.kind === 'remote') {
+      parts.push({ text: '【资料：' + f.name + '】' });
+      parts.push({ fileData: { mimeType: f.mime, fileUri: f.fileUri } });
+    } else {
+      parts.push({ text: '【资料：' + f.name + '】\n' + f.data });
+    }
+  }
+  return { parts: parts, count: sel.length };
+}
+
+/* ---------- 大文件：先传到 Google 的 Files API，请求里只带一个链接 ---------- */
+const FILES_HOST = 'https://generativelanguage.googleapis.com';
+const INLINE_FILE_MAX = 30 * 1048576;  // 单个文件超过这个大小，直接走 Files API
+const INLINE_TOTAL_MAX = 60e6;         // 直接发送的资料加起来超过这个（base64 字符数），就把最大的几份改走 Files API
+const REQUEST_MAX = 95e6;              // 单次请求的总上限（Gemini 是 100 MB）
+const FILE_MAX = 2 * 1024 * 1048576;   // Files API 单个文件上限 2 GB
+const keyTag = () => (S.settings.key || '').trim().slice(-8);
+function checkAbort(signal) { if (signal && signal.aborted) throw Object.assign(new Error('Aborted'), { name: 'AbortError' }); }
+function b64ToBlob(b64, mime) {
+  const bin = atob(b64), u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Blob([u8], { type: mime });
+}
+async function withLabel(label, fn) {
+  const old = busyLabel; busyLabel = label;
+  try { return await fn(); } finally { busyLabel = old; busyNote = ''; }
+}
+async function uploadToGemini(blob, name, mime, signal) {
+  const key = (S.settings.key || '').trim();
+  if (!key) throw new AppError('请先在「设置」里填入 Gemini API key。');
+  checkAbort(signal);
+  let res;
+  try {
+    res = await fetch(FILES_HOST + '/upload/v1beta/files?key=' + encodeURIComponent(key), {
+      method: 'POST', signal: signal,
+      headers: {
+        'X-Goog-Upload-Protocol': 'resumable', 'X-Goog-Upload-Command': 'start',
+        'X-Goog-Upload-Header-Content-Length': String(blob.size), 'X-Goog-Upload-Header-Content-Type': mime,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ file: { display_name: name } })
+    });
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw e;
+    throw new AppError('上传失败：连不上 Google 的文件服务。请检查网络后重试。');
+  }
+  if (!res.ok) { let d = null; try { d = await res.json(); } catch (e) { d = null; } throw new AppError(explainError(res.status, d)); }
+  const upUrl = res.headers.get('x-goog-upload-url');
+  if (!upUrl) throw new AppError('浏览器拿不到上传地址（可能被跨域限制挡住了）。请把这份文件拆小到 30 MB 以内再上传。');
+  let f = await new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    x.open('POST', upUrl);
+    x.setRequestHeader('X-Goog-Upload-Offset', '0');
+    x.setRequestHeader('X-Goog-Upload-Command', 'upload, finalize');
+    x.upload.onprogress = e => { if (e.lengthComputable) busyNote = '上传 ' + Math.round(e.loaded / e.total * 100) + '%'; };
+    x.onload = () => {
+      let d = null; try { d = JSON.parse(x.responseText); } catch (e) { d = null; }
+      if (x.status >= 200 && x.status < 300 && d && d.file) resolve(d.file); else reject(new AppError(explainError(x.status, d)));
+    };
+    x.onerror = () => reject(new AppError('上传中断了，请检查网络后重试。'));
+    x.onabort = () => reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }));
+    if (signal) signal.addEventListener('abort', () => x.abort(), { once: true });
+    x.send(blob);
+  });
+  busyNote = 'Google 正在处理文件';
+  for (let i = 0; i < 90 && f.state === 'PROCESSING'; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    checkAbort(signal);
+    const r = await fetch(FILES_HOST + '/v1beta/' + f.name + '?key=' + encodeURIComponent(key), { signal: signal });
+    let d = null; try { d = await r.json(); } catch (e) { d = null; }
+    if (!r.ok) throw new AppError(explainError(r.status, d));
+    f = d;
+  }
+  if ((f.state && f.state !== 'ACTIVE') || !f.uri) throw new AppError('Google 没能处理「' + name + '」。请确认文件没有损坏，或拆小后再试。');
+  return { uri: f.uri, mime: f.mimeType || mime, expires: f.expirationTime ? Date.parse(f.expirationTime) : Date.now() + 47 * 3600e3 };
+}
+async function toRemote(rec, blob, signal) {
+  const up = await withLabel('正在上传「' + shortText(rec.name, 24) + '」', () => uploadToGemini(blob, rec.name, rec.mime, signal));
+  rec.kind = 'remote'; rec.fileUri = up.uri; rec.expires = up.expires; rec.keyId = keyTag(); rec.blob = blob;
+  delete rec.data;
+  await idbPut(rec);
+}
+// 直接发送的资料太多时，自动把最大的几份改走 Files API
+async function ensureBudget(sel, signal) {
+  const total = () => sel.reduce((a, f) => a + (f.kind === 'inline' ? f.data.length : 0), 0);
+  while (total() > INLINE_TOTAL_MAX) {
+    const big = sel.filter(f => f.kind === 'inline').sort((a, b) => b.data.length - a.data.length)[0];
+    if (!big) break;
+    await toRemote(big, b64ToBlob(big.data, big.mime), signal);
+  }
+}
+// Google 只保留 48 小时：快过期（或换了 key）就用本地保存的原文件重新上传
+async function refreshRemote(sel, signal) {
+  for (const f of sel) {
+    if (f.kind !== 'remote') continue;
+    if (f.expires - Date.now() > 30 * 60e3 && f.keyId === keyTag()) continue;
+    if (!f.blob) throw new AppError('「' + f.name + '」在 Google 上已过期，本机也没有保存原文件。请删除后重新上传。');
+    await toRemote(f, f.blob, signal);
+  }
+}
+
+/* ---------- 生成：笔记 / 闪卡 / 题目 / 问答 ---------- */
+async function genNotes() {
+  if (!(await ensureRoom('notes'))) return;
+  run('notes', '正在生成笔记', async (signal) => {
+    const ctx = await gatherContext(false, signal);
+    const c = cfg();
+    const detail = $('#noteDetail').value, focus = $('#noteFocus').value.trim();
+    const prompt = [
+      '请根据我提供的资料，生成一份适合期末考试复习的【' + S.settings.subject + '】复习笔记。',
+      '要求：',
+      '1. 按资料的章节或知识模块组织，用 Markdown 标题分层（## 章节，### 知识点）。',
+      '2. ' + c.noteItem,
+      '3. ' + c.noteTail,
+      '4. 详细程度：' + detail + '。',
+      focus ? '5. 重点覆盖：' + focus + '。' : '',
+      '只写资料里有的内容，没有的不要补充。'
+    ].filter(Boolean).join('\n');
+    const r = await callGemini({ system: systemPrompt(), contents: [{ role: 'user', parts: ctx.parts.concat([{ text: prompt }]) }], signal: signal });
+    pushHist('notes');
+    S.notes = r.text;
+    S.notesMeta = new Date().toLocaleString() + ' · ' + ctx.count + ' 份资料' + (r.truncated ? ' · 内容被截断' : '');
+    save(); renderNotes();
+    if (r.truncated) setErr('notes', '输出太长，被截断了。可以在「重点章节」里指定范围，分几次生成。');
+  });
+}
+async function genCards() {
+  if (!(await ensureRoom('cards'))) return;
+  run('cards', '正在生成闪卡', async (signal) => {
+    const ctx = await gatherContext(false, signal);
+    const n = $('#cardCount').value;
+    const prompt = [
+      '请根据资料生成 ' + n + ' 张复习闪卡。',
+      cfg().cardHint,
+      '覆盖资料的主要知识点，由浅入深，不要重复。',
+      '严格按下面的格式输出，不要输出其他文字，不要使用代码块：',
+      '@@CARD', 'Q: 问题', 'A: 答案', '@@END'
+    ].join('\n');
+    const r = await callGemini({ system: systemPrompt(), contents: [{ role: 'user', parts: ctx.parts.concat([{ text: prompt }]) }], signal: signal });
+    const cards = parseCards(r.text);
+    if (!cards.length) throw new AppError('没能从回复里解析出闪卡，请再点一次「生成闪卡」。');
+    pushHist('cards');
+    S.cards = cards; cardPos = 0; cardShown = false; cardFilter = 'all'; save(); renderCards();
+  });
+}
+function quizFormat() {
+  return [
+    '严格按以下格式输出，不要输出其他文字，不要使用代码块，关键字（TYPE、STEM、OPT_A 等）不要加粗：',
+    '@@Q',
+    'TYPE: mcq',
+    'STEM: 题干（可多行，需要公式时用 LaTeX）',
+    'OPT_A: 选项 A',
+    'OPT_B: 选项 B',
+    'OPT_C: 选项 C',
+    'OPT_D: 选项 D',
+    'ANSWER: B',
+    'EXPLAIN: 解析',
+    '@@END',
+    '说明：选择题的 TYPE 写 mcq，ANSWER 只写一个字母；' + cfg().shortAsk + '的 TYPE 写 short，不写 OPT 行，ANSWER 写完整参考答案和关键步骤。',
+    cfg().quizCheck
+  ].join('\n');
+}
+function loadQuiz(list) {
+  pushHist('quiz');
+  S.quiz = list; S.qi = 0; S.qres = {}; save(); renderQuiz();
+}
+async function genQuiz() {
+  if (!(await ensureRoom('quiz'))) return;
+  run('quiz', '正在出题', async (signal) => {
+    const ctx = await gatherContext(false, signal);
+    const n = $('#quizCount').value, type = $('#quizType').value, diff = $('#quizDiff').value;
+    const sa = cfg().shortAsk;
+    const typeText = type === '混合' ? '选择题和' + sa + '混合（约六成选择题）' : (type === '只出选择题' ? '只出选择题' : '只出' + sa);
+    const prompt = ['请根据资料出 ' + n + ' 道【' + S.settings.subject + '】模拟题。题型：' + typeText + '。难度：' + diff + '。题目必须能依据资料作答，覆盖不同章节。', quizFormat()].join('\n');
+    const r = await callGemini({ system: systemPrompt(), contents: [{ role: 'user', parts: ctx.parts.concat([{ text: prompt }]) }], signal: signal });
+    const list = parseQuiz(r.text);
+    if (!list.length) throw new AppError('没能从回复里解析出题目，请再点一次「生成模拟题」。');
+    loadQuiz(list);
+  });
+}
+async function genVariants() {
+  if (!S.wrong.length) { toast('错题本是空的'); return; }
+  if (!(await ensureRoom('quiz'))) return;
+  run('quiz', '正在按错题出变式题', async (signal) => {
+    const ctx = await gatherContext(true, signal);
+    const items = S.wrong.slice(-10);
+    const imgParts = [];
+    for (let i = 0; i < items.length; i++) {
+      const w = items[i];
+      if (!(w.imgs && w.imgs.length)) continue;
+      imgParts.push({ text: '第 ' + (i + 1) + ' 题的图片：' });
+      for (const id of w.imgs) { const r = await getImg(id); if (r) imgParts.push({ inlineData: { mimeType: r.mime, data: r.data } }); }
+    }
+    const lines = items.map((w, i) => {
+      let t = (i + 1) + '. 题干：' + w.stem + ((w.imgs && w.imgs.length) ? '（题目内容在图片里，见下方图片）' : '');
+      Object.keys(w.opts || {}).forEach(k => { t += '\n' + k + '. ' + w.opts[k]; });
+      return t + '\n正确答案：' + w.answer + (w.explain ? '\n解析：' + w.explain : '');
+    }).join('\n\n');
+    const prompt = ['下面是我做错的题。请为每一道各出 1 道同一知识点、但数字或情境不同的变式题，共 ' + items.length + ' 道，题型保持一致。', lines, quizFormat()].join('\n\n');
+    const r = await callGemini({ system: systemPrompt(), contents: [{ role: 'user', parts: ctx.parts.concat([{ text: prompt }], imgParts) }], signal: signal });
+    const list = parseQuiz(r.text);
+    if (!list.length) throw new AppError('没能从回复里解析出题目，请再试一次。');
+    loadQuiz(list);
+  });
+}
+
+/* ---------- 问答里的照片 ---------- */
+const MAX_IMGS = 4;
+const IMG_ASK = '请看图，讲解这道题并给出解题思路和答案。';
+let pending = []; // 还没发送的照片：{id, mime, data}
+function dataUrl(r) { return 'data:' + r.mime + ';base64,' + r.data; }
+async function prepImage(file) {
+  let bmp;
+  try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch (e) {
+    bmp = await new Promise((res, rej) => {
+      const u = URL.createObjectURL(file), im = new Image();
+      im.onload = () => { URL.revokeObjectURL(u); res(im); };
+      im.onerror = () => { URL.revokeObjectURL(u); rej(new AppError('读不了「' + file.name + '」，请换一张 JPG 或 PNG。')); };
+      im.src = u;
+    });
+  }
+  const w = bmp.width || bmp.naturalWidth, h = bmp.height || bmp.naturalHeight;
+  const sc = Math.min(1, 1800 / Math.max(w, h));
+  const cv = document.createElement('canvas');
+  cv.width = Math.max(1, Math.round(w * sc)); cv.height = Math.max(1, Math.round(h * sc));
+  const g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+  g.drawImage(bmp, 0, 0, cv.width, cv.height);
+  if (bmp.close) bmp.close();
+  const url = cv.toDataURL('image/jpeg', 0.86);
+  return { id: 'img-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), mime: 'image/jpeg', data: url.split(',')[1] };
+}
+async function addImages(list) {
+  const arr = Array.from(list || []).filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name));
+  for (const f of arr) {
+    if (pending.length >= MAX_IMGS) { toast('一次最多附 ' + MAX_IMGS + ' 张图片', 'error'); break; }
+    try { const r = await prepImage(f); imgCache[r.id] = r; pending.push(r); renderAttach(); }
+    catch (e) { toast((e && e.message) || '图片读取失败', 'error'); }
+  }
+}
+function renderAttach() {
+  const box = $('#attachStrip'); box.innerHTML = ''; box.hidden = !pending.length;
+  pending.forEach(r => {
+    const d = document.createElement('div'); d.className = 'thumb';
+    const im = document.createElement('img'); im.src = dataUrl(r); im.alt = '待发送的图片';
+    const x = document.createElement('button'); x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', '移除图片');
+    x.onclick = () => { pending = pending.filter(p => p.id !== r.id); renderAttach(); };
+    d.appendChild(im); d.appendChild(x); box.appendChild(d);
+  });
+}
+function imgTags(ids) { return ids.map(id => '<img data-img="' + esc(id) + '" alt="题目图片">').join(''); }
+function hydrateImgs(root) {
+  $$('img[data-img]:not([src])', root).forEach(im => {
+    im.onclick = () => im.classList.toggle('big');
+    getImg(im.getAttribute('data-img')).then(r => {
+      if (r) im.src = dataUrl(r);
+      else { const sp = document.createElement('span'); sp.className = 'muted fine'; sp.textContent = '（图片已丢失）'; im.replaceWith(sp); }
+    });
+  });
+}
+async function buildHistory() {
+  const arr = S.chat.slice(-20);
+  while (arr.length && arr[0].role !== 'user') arr.shift();
+  const keep = new Set();
+  for (let i = arr.length - 1, n = 0; i >= 0 && n < 3; i--) if (arr[i].role === 'user' && arr[i].imgs && arr[i].imgs.length) { keep.add(i); n++; }
+  const out = [];
+  for (let i = 0; i < arr.length; i++) {
+    const m = arr[i], parts = [];
+    let text = m.text;
+    if (m.imgs && m.imgs.length) {
+      if (keep.has(i)) { for (const id of m.imgs) { const r = await getImg(id); if (r) parts.push({ inlineData: { mimeType: r.mime, data: r.data } }); } }
+      else text += '\n（这里原本附有图片，已省略）';
+    }
+    parts.push({ text: text });
+    out.push({ role: m.role, parts: parts });
+  }
+  return out;
+}
+function sendChat(preset) {
+  const ta = $('#chatInput');
+  const isPreset = typeof preset === 'string';
+  let text = (isPreset ? preset : ta.value).trim();
+  const imgs = isPreset ? [] : pending.slice();
+  if ((!text && !imgs.length) || busy) return;
+  if (!text) text = IMG_ASK;
+  run('chat', '正在思考', async (signal) => {
+    const hasImgs = imgs.length > 0 || S.chat.some(m => m.imgs && m.imgs.length);
+    const ctx = await gatherContext(hasImgs, signal);
+    const ids = [];
+    for (const r of imgs) { imgCache[r.id] = r; await imgPut({ id: r.id, mime: r.mime, data: r.data }); ids.push(r.id); }
+    const msg = { role: 'user', text: text };
+    if (ids.length) msg.imgs = ids;
+    S.chat.push(msg);
+    if (!isPreset) { ta.value = ''; pending = []; renderAttach(); }
+    renderChat();
+    try {
+      const hist = await buildHistory();
+      const head = ctx.count ? [
+        { role: 'user', parts: ctx.parts.concat([{ text: '请把以上资料作为后续问答的依据。' }]) },
+        { role: 'model', parts: [{ text: '好的，我已读完这些资料，请提问。' }] }
+      ] : [];
+      const sys = systemPrompt({ images: hasImgs, noMaterials: !ctx.count }) + '\n回答先给结论，再给必要的步骤。';
+      const r = await callGemini({ system: sys, contents: head.concat(hist), signal: signal });
+      S.chat.push({ role: 'model', text: r.text }); save(); renderChat();
+    } catch (e) {
+      S.chat.pop(); if (!isPreset) { ta.value = text === IMG_ASK && ids.length ? '' : text; pending = imgs; renderAttach(); }
+      else ta.value = text;
+      renderChat(); throw e;
+    }
+  });
+}
+function addChatWrong(i) {
+  const u = S.chat[i - 1], m = S.chat[i];
+  if (!u || !m || !(u.imgs && u.imgs.length)) return;
+  addWrong({ type: 'short', stem: u.text === IMG_ASK ? '（题目见图片）' : u.text, opts: {}, answer: m.text, explain: '', imgs: u.imgs });
+  save(); renderWrong(); renderChat(); toast('已加入「' + S.settings.subject + '」错题本');
+}
+
+/* ---------- 渲染 ---------- */
+function renderFiles() {
+  const ul = $('#fileList'); ul.innerHTML = '';
+  const mine = subjFiles();
+  if (!mine.length) { const li = document.createElement('li'); li.className = 'empty'; li.textContent = '「' + S.settings.subject + '」还没有资料。上传后可以在这里勾选要用哪几份。'; ul.appendChild(li); }
+  mine.forEach(f => {
+    const li = document.createElement('li'); li.className = 'file';
+    li.innerHTML = '<label><input type="checkbox"><span class="fname"></span></label><span class="fmeta"></span><button class="icon" type="button" title="删除" aria-label="删除">✕</button>';
+    const cb = $('input', li); cb.checked = !!f.selected;
+    $('.fname', li).textContent = f.name;
+    $('.fmeta', li).textContent = fmtSize(f.size || 0) + (f.kind === 'text' ? ' · 已转成文字' : (f.kind === 'remote' ? ' · 大文件通道' : ''));
+    cb.onchange = () => { f.selected = cb.checked; idbPut(f); updateSummary(); };
+    $('button', li).onclick = () => { if (f.shared) { (S.settings.hidden = S.settings.hidden || []).push(f.id); save(); } files = files.filter(x => x.id !== f.id); idbDel(f.id); renderFiles(); };
+    ul.appendChild(li);
+  });
+  updateSummary(); updateCounts();
+}
+function updateSummary() {
+  const mine = subjFiles(), sel = mine.filter(f => f.selected);
+  const cbtn = $('#btnClearFiles'); if (cbtn) cbtn.hidden = !mine.length;
+  const total = sel.reduce((a, f) => a + (f.size || 0), 0), remote = sel.filter(f => f.kind === 'remote').length;
+  const el = $('#fileSummary');
+  if (!mine.length) { el.textContent = ''; return; }
+  el.textContent = '已勾选 ' + sel.length + ' / ' + mine.length + ' 份，共 ' + fmtSize(total) + '。' +
+    (remote ? remote + ' 份大文件已上传到 Google，保留 48 小时，过期后会自动重新上传。' : '');
+}
+function updateCounts() {
+  $$('#subjectSeg button[data-subject]').forEach(b => {
+    const n = files.filter(f => f.subject === b.getAttribute('data-subject')).length;
+    const c = $('.cnt', b); c.textContent = n || ''; c.hidden = !n;
+  });
+}
+function renderNotes() {
+  const out = $('#notesOut'), bar = $('#notesBar');
+  if (!S.notes) { out.innerHTML = '<div class="empty">还没有笔记。先在「资料」页上传文件，再点上面的「生成笔记」。</div>'; bar.hidden = true; return; }
+  out.innerHTML = renderMarkdown(S.notes);
+  $('#notesMeta').textContent = S.notesMeta; bar.hidden = false;
+}
+function cardList() { return S.cards.map((c, i) => ({ c: c, i: i })).filter(x => cardFilter === 'all' || x.c.st !== 1); }
+function renderCards() {
+  const box = $('#cardsArea');
+  if (!S.cards.length) { box.innerHTML = '<div class="empty">还没有闪卡。点上面的「生成闪卡」。</div>'; return; }
+  const list = cardList();
+  const got = S.cards.filter(c => c.st === 1).length, hard = S.cards.filter(c => c.st === 2).length;
+  let h = '<div class="deckbar"><span>记住 ' + got + ' · 没记住 ' + hard + ' · 共 ' + S.cards.length + ' 张</span><span class="spacer"></span>' +
+    '<select id="cardFilter" aria-label="筛选"><option value="all"' + (cardFilter === 'all' ? ' selected' : '') + '>全部</option><option value="hard"' + (cardFilter === 'hard' ? ' selected' : '') + '>还没记住的</option></select>' +
+    '<button class="btn small line" id="btnShuffle">打乱</button><button class="btn small line" id="btnResetCards">重置进度</button></div>';
+  if (!list.length) {
+    h += '<div class="empty">这些卡片都记住了。</div>';
+    box.innerHTML = h; bindCardBar(); return;
+  }
+  if (cardPos >= list.length) cardPos = 0;
+  const c = list[cardPos].c;
+  h += '<div class="card"><div class="tag">第 ' + (cardPos + 1) + ' / ' + list.length + ' 张 · 问题</div><div class="q cardface md">' + renderMarkdown(c.q) + '</div>' +
+    (cardShown ? '<div class="a"><div class="tag">答案</div><div class="cardface md">' + renderMarkdown(c.a) + '</div></div>' : '') + '</div>';
+  h += '<div class="rowbtns"><button class="btn line" id="btnPrevCard">上一张</button><button class="btn primary" id="btnFlip">' + (cardShown ? '收起答案' : '显示答案') + '</button><button class="btn line" id="btnNextCard">下一张</button></div>';
+  if (cardShown) h += '<div class="rowbtns"><button class="btn badb" id="btnHard">没记住</button><button class="btn good" id="btnGot">记住了</button></div>';
+  box.innerHTML = h; bindCardBar();
+  const on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
+  on('#btnFlip', () => { cardShown = !cardShown; renderCards(); });
+  on('#btnNextCard', () => { cardPos = (cardPos + 1) % list.length; cardShown = false; renderCards(); });
+  on('#btnPrevCard', () => { cardPos = (cardPos - 1 + list.length) % list.length; cardShown = false; renderCards(); });
+  on('#btnGot', () => markCard(1));
+  on('#btnHard', () => markCard(2));
+}
+function bindCardBar() {
+  const f = $('#cardFilter'); if (f) f.onchange = () => { cardFilter = f.value; cardPos = 0; cardShown = false; renderCards(); };
+  const s = $('#btnShuffle'); if (s) s.onclick = () => {
+    for (let i = S.cards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = S.cards[i]; S.cards[i] = S.cards[j]; S.cards[j] = t; }
+    cardPos = 0; cardShown = false; save(); renderCards();
+  };
+  const r = $('#btnResetCards'); if (r) r.onclick = () => { const old = S.cards.map(c => c.st), subj = S.settings.subject; S.cards.forEach(c => { c.st = 0; }); cardPos = 0; cardShown = false; save(); renderCards(); undoToast('已重置闪卡进度', () => { const cs = S.data[subj].cards; old.forEach((v, i) => { if (cs[i]) cs[i].st = v; }); save(); if (S.settings.subject === subj) renderCards(); }); };
+}
+function markCard(st) {
+  const list = cardList(); const it = list[cardPos]; if (!it) return;
+  it.c.st = st; save(); cardShown = false;
+  if (!(cardFilter === 'hard' && st === 1)) cardPos++;
+  if (cardPos >= cardList().length) cardPos = 0;
+  renderCards();
+}
+function sameWrong(a, b) { return a.stem === b.stem && (a.imgs || []).join() === (b.imgs || []).join(); }
+function addWrong(q) {
+  if (S.wrong.some(w => sameWrong(w, q))) return;
+  S.wrong.push({ type: q.type, stem: q.stem, opts: q.opts || {}, answer: q.answer, explain: q.explain || '', imgs: (q.imgs && q.imgs.length) ? q.imgs.slice() : undefined });
+}
+function renderQuiz() {
+  const area = $('#quizArea');
+  if (!S.quiz.length) { area.innerHTML = '<div class="empty">还没有题目。选好题数和难度，点「生成模拟题」。</div>'; renderWrong(); return; }
+  if (S.qi >= S.quiz.length) { renderSummary(area); renderWrong(); return; }
+  const q = S.quiz[S.qi], res = S.qres[S.qi] || null, total = S.quiz.length;
+  let h = '<div class="qhead"><span>第 ' + (S.qi + 1) + ' / ' + total + ' 题</span><span>' + (q.type === 'mcq' ? '选择题' : cfg().shortName) + '</span></div>';
+  h += '<div class="stem md">' + renderMarkdown(q.stem) + '</div>';
+  if (q.imgs && q.imgs.length) h += '<div class="thumbs">' + imgTags(q.imgs) + '</div>';
+  let canNext = false;
+  if (q.type === 'mcq') {
+    h += '<div class="opts">';
+    Object.keys(q.opts).forEach(k => {
+      let cls = 'opt';
+      if (res) { if (k === q.answer) cls += ' correct'; else if (k === res.picked) cls += ' wrong'; }
+      h += '<button class="' + cls + '" data-k="' + k + '"' + (res ? ' disabled' : '') + '><b>' + k + '</b><span class="md">' + renderMarkdown(q.opts[k]) + '</span></button>';
+    });
+    h += '</div>';
+    if (res) {
+      canNext = true;
+      h += '<div class="verdict ' + (res.ok ? 'ok' : 'no') + '">' + (res.ok ? '答对了' : '答错了，正确答案是 ' + q.answer) + '</div>';
+      if (q.explain) h += '<div class="explain md">' + renderMarkdown(q.explain) + '</div>';
+    }
+  } else {
+    if (!res) {
+      h += '<textarea id="shortAns" rows="4" placeholder="先自己写出解答，再看参考答案"></textarea><div class="rowbtns"><button class="btn primary" id="btnReveal">显示参考答案</button></div>';
+    } else {
+      canNext = true;
+      h += '<div class="verdict">参考答案</div><div class="explain md">' + renderMarkdown(q.answer) + '</div>';
+      if (q.explain) h += '<div class="verdict">解析</div><div class="explain md">' + renderMarkdown(q.explain) + '</div>';
+      if (res.ok === undefined) h += '<div class="rowbtns"><button class="btn badb" id="btnSelfNo">我答错了</button><button class="btn good" id="btnSelfYes">我答对了</button></div>';
+      else h += '<div class="verdict ' + (res.ok ? 'ok' : 'no') + '">' + (res.ok ? '已记为答对' : '已记入错题本') + '</div>';
+    }
+  }
+  h += '<div class="rowbtns">' + (S.qi > 0 ? '<button class="btn line" id="btnPrevQ">上一题</button>' : '') +
+    (canNext ? '<button class="btn primary" id="btnNextQ">' + (S.qi + 1 >= total ? '查看结果' : '下一题') + '</button>' : '') + '</div>';
+  area.innerHTML = h; hydrateImgs(area);
+  $$('.opt', area).forEach(b => b.onclick = () => {
+    if (S.qres[S.qi]) return;
+    const k = b.getAttribute('data-k'), ok = k === q.answer;
+    S.qres[S.qi] = { picked: k, ok: ok }; if (!ok) addWrong(q); save(); renderQuiz();
+  });
+  const on = (id, fn) => { const el = $(id, area); if (el) el.onclick = fn; };
+  on('#btnReveal', () => { S.qres[S.qi] = { revealed: true }; save(); renderQuiz(); });
+  on('#btnSelfYes', () => { S.qres[S.qi] = { revealed: true, ok: true }; save(); renderQuiz(); });
+  on('#btnSelfNo', () => { S.qres[S.qi] = { revealed: true, ok: false }; addWrong(q); save(); renderQuiz(); });
+  on('#btnNextQ', () => { S.qi++; save(); renderQuiz(); });
+  on('#btnPrevQ', () => { S.qi--; save(); renderQuiz(); });
+  renderWrong();
+}
+function renderSummary(area) {
+  const total = S.quiz.length; let ok = 0, skip = 0;
+  for (let i = 0; i < total; i++) { const r = S.qres[i]; if (r && r.ok === true) ok++; else if (!r || r.ok === undefined) skip++; }
+  let h = '<div class="score">答对 ' + ok + ' / ' + total + '</div>';
+  if (skip) h += '<p class="muted">另有 ' + skip + ' 题没有作答或没有自评。</p>';
+  h += '<div class="rowbtns"><button class="btn line" id="btnRedoSet">重做这一套</button>' +
+    (S.wrong.length ? '<button class="btn" id="btnSumVar" data-gen>按错题出变式题</button>' : '') +
+    '<button class="btn primary" id="btnSumNew" data-gen>再出一套</button></div>';
+  area.innerHTML = h;
+  $('#btnRedoSet').onclick = () => { const oq = S.qi, or = S.qres, subj = S.settings.subject; S.qi = 0; S.qres = {}; save(); renderQuiz(); undoToast('已重做这一套（之前的作答被清掉）', () => { S.data[subj].qi = oq; S.data[subj].qres = or; save(); if (S.settings.subject === subj) renderQuiz(); }); };
+  const v = $('#btnSumVar'); if (v) v.onclick = genVariants;
+  $('#btnSumNew').onclick = genQuiz;
+}
+function renderWrong() {
+  const box = $('#wrongArea');
+  if (!S.wrong.length) { box.innerHTML = ''; return; }
+  let h = '<div class="wrong-head"><h3>错题本（' + S.wrong.length + '）</h3><span class="spacer"></span>' +
+    '<button class="btn small line" id="btnWrongRedo">重做错题</button><button class="btn small line" id="btnWrongVar" data-gen>出变式题</button><button class="btn small line" id="btnWrongClear">清空</button></div>';
+  S.wrong.forEach(w => {
+    const has = !!(w.imgs && w.imgs.length);
+    const ans = w.type === 'mcq' ? w.answer + '. ' + ((w.opts && w.opts[w.answer]) || '') : w.answer;
+    h += '<details><summary>' + (has ? '📷 ' : '') + esc(shortText(w.stem)) + '</summary>' +
+      (has ? '<div class="thumbs">' + imgTags(w.imgs) + '</div>' : '') +
+      '<div class="md">' + renderMarkdown(w.stem) + '</div>' +
+      '<p><b>答案</b></p><div class="md">' + renderMarkdown(ans) + '</div>' +
+      (w.explain ? '<p><b>解析</b></p><div class="md">' + renderMarkdown(w.explain) + '</div>' : '') + '</details>';
+  });
+  box.innerHTML = h; hydrateImgs(box);
+  $('#btnWrongRedo').onclick = () => loadQuiz(S.wrong.map(w => ({ type: w.type, stem: w.stem, opts: w.opts || {}, answer: w.answer, explain: w.explain, imgs: w.imgs })));
+  $('#btnWrongVar').onclick = genVariants;
+  $('#btnWrongClear').onclick = () => { const old = S.wrong, subj = S.settings.subject; if (!old.length) return; S.wrong = []; save(); renderWrong(); renderChat(); undoToast('已清空错题本', () => { S.data[subj].wrong = old; save(); if (S.settings.subject === subj) { renderWrong(); renderChat(); } }, gcImgs); };
+}
+function renderChips() {
+  const box = $('#chips'); box.innerHTML = '';
+  cfg().chips.forEach(c => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = c[0];
+    b.onclick = () => sendChat(c[1]);
+    box.appendChild(b);
+  });
+}
+function renderChat() {
+  const log = $('#chatLog'); log.innerHTML = '';
+  if (!S.chat.length) {
+    const d = document.createElement('div'); d.className = 'empty';
+    d.textContent = '勾选好资料后，直接问问题；也可以点输入框左边的相机，拍一道题来问。回答会尽量标出出处页码，页码仅供参考。';
+    log.appendChild(d); return;
+  }
+  S.chat.forEach((m, i) => {
+    const d = document.createElement('div'); d.className = 'msg ' + m.role;
+    if (m.role === 'user') {
+      if (m.imgs && m.imgs.length) { const t = document.createElement('div'); t.className = 'thumbs'; t.innerHTML = imgTags(m.imgs); d.appendChild(t); }
+      const p = document.createElement('div'); p.textContent = m.text; d.appendChild(p);
+    } else {
+      d.className += ' md'; d.innerHTML = renderMarkdown(m.text);
+      const prev = S.chat[i - 1];
+      if (prev && prev.role === 'user' && prev.imgs && prev.imgs.length) {
+        const row = document.createElement('div'); row.className = 'msgact no-print';
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small line';
+        const done = S.wrong.some(w => sameWrong(w, { stem: prev.text === IMG_ASK ? '（题目见图片）' : prev.text, imgs: prev.imgs }));
+        b.textContent = done ? '已在错题本' : '加入错题本'; b.disabled = done;
+        b.onclick = () => addChatWrong(i);
+        row.appendChild(b); d.appendChild(row);
+      }
+    }
+    log.appendChild(d);
+  });
+  hydrateImgs(log);
+  log.lastElementChild.scrollIntoView({ block: 'nearest' });
+}
+function renderSubjectNav() {
+  const nav = $('#subjectSeg'); nav.innerHTML = '';
+  S.subjects.forEach(sj => {
+    const b = document.createElement('button'); b.type = 'button';
+    b.setAttribute('data-subject', sj.name); b.setAttribute('data-pal', String(sj.pal)); b.setAttribute('data-gen', ''); b.setAttribute('aria-pressed', 'false');
+    const dot = document.createElement('span'); dot.className = 'sd'; b.appendChild(dot);
+    b.appendChild(document.createTextNode(sj.name + (sj.pub ? ' 🌐' : '')));
+    const em = document.createElement('em'); em.className = 'cnt'; em.hidden = true; b.appendChild(em);
+    nav.appendChild(b);
+  });
+  if (S.subjects.length < MAX_SUBJECTS) {
+    const a = document.createElement('button'); a.type = 'button'; a.className = 'add'; a.setAttribute('data-add', ''); a.setAttribute('data-gen', '');
+    a.textContent = '＋ 添加学科'; nav.appendChild(a);
+  }
+  updateCounts();
+}
+function renderSubject() {
+  const sj = curSubj(), c = cfg();
+  S.settings.subject = sj.name;
+  document.body.setAttribute('data-pal', String(sj.pal));
+  $$('#subjectSeg button[data-subject]').forEach(b => b.setAttribute('aria-pressed', String(b.getAttribute('data-subject') === sj.name)));
+  $('#upTitle').textContent = '上传「' + sj.name + '」资料';
+  const opt = $('#quizType').options[2]; if (opt) opt.textContent = '只出' + c.shortAsk;
+  renderChips();
+}
+function refreshAll() {
+  cardFilter = 'all'; cardPos = 0; cardShown = false;
+  ['files', 'notes', 'cards', 'quiz', 'chat'].forEach(p => setErr(p, ''));
+  renderSubject(); renderFiles(); renderNotes(); renderCards(); renderQuiz(); renderChat(); renderHistBars();
+}
+function switchSubject(name) {
+  if (busy || name === S.settings.subject) return;
+  S.settings.subject = name; save(); refreshAll();
+}
+
+/* ---------- 添加 / 编辑学科 ---------- */
+let subjMode = 'add', subjType = 'arts', subjPub = false;
+function paintSubjType() {
+  $$('#subTypeSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.getAttribute('data-type') === subjType)));
+  $('#subTypeHint').textContent = TYPE_HINT[subjType];
+  $$('#subPubSeg button').forEach(b => b.setAttribute('aria-pressed', String((b.getAttribute('data-pub') === '1') === subjPub)));
+  $('#subPubHint').textContent = subjPub ? 'Public：这个学科的资料会被放进「分享版」，拿到分享版的人都能看到。你的笔记、闪卡、刷题、问答不会分享。' : 'Private：只有你自己能看到。';
+}
+function openSubjectDlg(mode) {
+  if (busy) return;
+  subjMode = mode; const cur = curSubj();
+  $('#subTitle').textContent = mode === 'add' ? '添加学科' : '学科设置：' + cur.name;
+  $('#subName').value = mode === 'add' ? '' : cur.name;
+  subjType = mode === 'add' ? 'arts' : cur.type; subjPub = mode === 'add' ? false : !!cur.pub;
+  $('#btnSubSave').textContent = mode === 'add' ? '添加' : '保存';
+  $('#btnSubDelete').hidden = mode === 'add' || S.subjects.length <= 1;
+  $('#subErr').textContent = ''; paintSubjType();
+  const d = $('#dlgSubject'); if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+  setTimeout(() => $('#subName').focus(), 30);
+}
+function pickPal() {
+  const used = S.subjects.map(x => x.pal);
+  const order = [5, 6, 7, 0, 1, 2, 3, 4];
+  const free = order.filter(p => used.indexOf(p) < 0);
+  return free.length ? free[0] : order[S.subjects.length % order.length];
+}
+function saveSubject() {
+  const name = $('#subName').value.trim().replace(/\s+/g, ' ');
+  const err = m => { $('#subErr').textContent = m; };
+  const cur = curSubj();
+  if (!name) return err('请填写学科名称。');
+  if (name.length > 8) return err('名称最多 8 个字。');
+  if (BAD_NAMES.indexOf(name) >= 0) return err('这个名称不能用，请换一个。');
+  if (S.subjects.some(x => x.name === name && (subjMode === 'add' || x !== cur))) return err('已经有叫「' + name + '」的学科了。');
+  if (subjMode === 'add') {
+    if (S.subjects.length >= MAX_SUBJECTS) return err('学科最多 ' + MAX_SUBJECTS + ' 个。');
+    S.subjects.push({ name: name, type: subjType, pal: pickPal(), pub: subjPub });
+    S.data[name] = PER(); S.settings.subject = name;
+  } else {
+    const old = cur.name;
+    cur.type = subjType; cur.pub = subjPub;
+    if (name !== old) {
+      S.data[name] = S.data[old]; delete S.data[old];
+      cur.name = name; S.settings.subject = name;
+      files.forEach(f => { if (f.subject === old) { f.subject = name; idbPut(f); } });
+      hist.forEach(h => { if (h.subj === old) { h.subj = name; histPut(h); } });
+    }
+  }
+  save(); $('#dlgSubject').close();
+  renderSubjectNav(); refreshAll(); paintShare();
+  toast(subjMode === 'add' ? '已添加「' + name + '」' : '已保存');
+}
+function deleteSubject() {
+  const cur = curSubj();
+  if (S.subjects.length <= 1) return;
+  if (!confirm('删除「' + cur.name + '」会同时清除这个学科的资料、笔记、闪卡、题目、错题本和对话，确定吗？')) return;
+  files.filter(f => f.subject === cur.name).forEach(f => idbDel(f.id));
+  files = files.filter(f => f.subject !== cur.name);
+  hist.filter(h => h.subj === cur.name).forEach(h => histDel(h.id)); hist = hist.filter(h => h.subj !== cur.name);
+  if (cur.shared) (S.settings.hidden = S.settings.hidden || []).push('subj:' + cur.name);
+  delete S.data[cur.name];
+  S.subjects = S.subjects.filter(x => x !== cur);
+  S.settings.subject = S.subjects[0].name;
+  save(); $('#dlgSubject').close();
+  renderSubjectNav(); refreshAll(); gcImgs();
+  toast('已删除「' + cur.name + '」');
+}
+
+function renderBanner() { $('#keyBanner').hidden = !!(S.settings.key || '').trim(); }
+
+/* ---------- 读取上传的文件 ---------- */
+function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(',')[1] || '');
+    r.onerror = () => rej(new AppError('读取「' + file.name + '」失败。'));
+    r.readAsDataURL(file);
+  });
+}
+async function readFile(file, signal) {
+  const name = file.name, ext = (name.split('.').pop() || '').toLowerCase();
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const base = { id: id, name: name, size: file.size, selected: true };
+  const mimes = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
+  if (mimes[ext]) {
+    if (file.size > FILE_MAX) throw new AppError('「' + name + '」超过 2 GB，请拆成几份后再上传。');
+    if (file.size > INLINE_FILE_MAX) {
+      if (!(S.settings.key || '').trim()) throw new AppError('「' + name + '」超过 30 MB，要先传到 Google 的文件服务。请先在「设置」里填好 API key 再上传。');
+      const big = Object.assign(base, { kind: 'remote', mime: mimes[ext] });
+      await toRemote(big, file, signal);
+      return big;
+    }
+    return Object.assign(base, { kind: 'inline', mime: mimes[ext], data: await toBase64(file) });
+  }
+  if (['txt', 'md', 'markdown', 'csv'].indexOf(ext) >= 0) {
+    return Object.assign(base, { kind: 'text', mime: 'text/plain', data: await file.text() });
+  }
+  if (ext === 'xlsx' || ext === 'xls') {
+    if (typeof XLSX === 'undefined') await loadScript(XLSX_URL);
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    let out = '';
+    wb.SheetNames.forEach(sn => {
+      const csv = XLSX.utils.sheet_to_csv(wb.Sheets[sn], { blankrows: false });
+      if (csv.trim()) out += '## 工作表：' + sn + '\n' + csv + '\n\n';
+    });
+    if (!out.trim()) throw new AppError('「' + name + '」里没有读到内容。');
+    toast('已读取 ' + wb.SheetNames.length + ' 个工作表（表格里的图片和图表不会被读取）');
+    return Object.assign(base, { kind: 'text', mime: 'text/plain', data: out });
+  }
+  if (ext === 'docx') {
+    if (typeof mammoth === 'undefined') await loadScript(MAMMOTH_URL);
+    const r = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+    if (!r.value.trim()) throw new AppError('「' + name + '」里没有读到文字。');
+    toast('已读取 Word 里的文字（图片不会被读取）');
+    return Object.assign(base, { kind: 'text', mime: 'text/plain', data: r.value });
+  }
+  if (['ppt', 'pptx', 'doc'].indexOf(ext) >= 0) throw new AppError('暂不支持 .' + ext + '。请先在 WPS 或 Office 里另存为 PDF 再上传。');
+  throw new AppError('不支持的格式：' + name);
+}
+async function addFiles(list) {
+  if (busy) { toast('正在处理上一个任务，请稍后再上传。', 'error'); return; }
+  const subj = S.settings.subject;
+  await run('files', '正在读取资料', async (signal) => {
+    const errs = [];
+    for (const file of Array.from(list)) {
+      try {
+        busyLabel = '正在读取「' + shortText(file.name, 24) + '」';
+        const rec = await readFile(file, signal);
+        rec.subject = subj;
+        files.push(rec); await idbPut(rec); renderFiles();
+      } catch (e) {
+        if (e && e.name === 'AbortError') throw e;
+        errs.push((e && e.message) || String(e));
+      }
+    }
+    if (errs.length) setErr('files', errs.join('\n'));
+  });
+}
+
+
+/* ---------- 分享：Public 学科的资料打包进「分享版」；只含资料，不含笔记 / 闪卡 / 题目 / 对话 / Key ---------- */
+const SHARED = (() => { try { return JSON.parse($('#shared-data').textContent); } catch (e) { return null; } })();
+function paintShare() { const b = $('#btnShare'); if (b) b.hidden = !S.subjects.some(x => x.pub); }
+function blobToB64(blob) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
+}
+async function exportShare() {
+  const pubs = S.subjects.filter(x => x.pub);
+  if (!pubs.length) return toast('还没有 Public 学科。', 'error');
+  S.settings.dev = S.settings.dev || Math.random().toString(36).slice(2) + Date.now().toString(36); save();
+  const out = { owner: S.settings.dev, subjects: pubs.map(x => ({ name: x.name, type: x.type, pal: x.pal })), files: [] };
+  const skipped = [];
+  for (const f of files) {
+    if (!pubs.some(x => x.name === f.subject) || f.shared) continue;
+    const r = { id: 'sh-' + f.id, name: f.name, size: f.size, subject: f.subject, mime: f.mime };
+    if (f.kind === 'remote') {
+      if (!f.blob) { skipped.push(f.name); continue; }
+      r.kind = 'inline'; r.data = await blobToB64(f.blob);
+    } else { r.kind = f.kind; r.data = f.data; }
+    out.files.push(r);
+  }
+  let html;
+  try { html = await (await fetch(location.href.split('#')[0])).text(); } catch (e) { html = '<!doctype html>\n' + document.documentElement.outerHTML; }
+  const json = JSON.stringify(out).replace(/</g, '\\u003c');
+  html = html.replace(/(<script id="shared-data" type="application\/json">)[\s\S]*?(<\/script>)/, (m, a, b) => a + json + b);
+  const mb = html.length / 1048576;
+  download('考前助手-分享版.html', html);
+  toast('已生成分享版（' + out.files.length + ' 份资料，约 ' + mb.toFixed(1) + ' MB）' + (skipped.length ? '；' + skipped.length + ' 份大文件本机没有原件，没放进去' : '') + (mb > 20 ? '。文件偏大，部分网站可能放不下' : ''));
+}
+// 打开分享版时：把 Public 资料放进自己的资料库，其余一切仍然只存在自己的浏览器里
+async function importShared() {
+  if (!SHARED || !Array.isArray(SHARED.subjects)) return;
+  if (SHARED.owner && SHARED.owner === S.settings.dev) return; // 发布者自己的浏览器里已经有这些资料，不重复导入
+  const hid = S.settings.hidden = S.settings.hidden || [];
+  let changed = false;
+  SHARED.subjects.forEach(sj => {
+    if (!sj || typeof sj.name !== 'string' || BAD_NAMES.indexOf(sj.name) >= 0 || hid.indexOf('subj:' + sj.name) >= 0) return;
+    if (subjNames().indexOf(sj.name) >= 0 || S.subjects.length >= MAX_SUBJECTS) return;
+    S.subjects.push({ name: sj.name, type: TYPES[sj.type] ? sj.type : 'gen', pal: Number.isInteger(sj.pal) ? sj.pal : pickPal(), pub: false, shared: true });
+    S.data[sj.name] = PER(); changed = true;
+  });
+  for (const f of (SHARED.files || [])) {
+    if (!f || hid.indexOf(f.id) >= 0 || hid.indexOf('subj:' + f.subject) >= 0 || files.some(x => x.id === f.id) || subjNames().indexOf(f.subject) < 0) continue;
+    const rec = Object.assign({}, f, { selected: true, shared: true });
+    files.push(rec); await idbPut(rec);
+  }
+  if (changed) save();
+}
+
+/* ---------- 仓库资料库：自动读取 GitHub 仓库 materials/学科名/ 里的文件 ----------
+   文件夹名就是学科名；想指定类型可写成「英语@lang」（sci 理科 / arts 文科 / lang 语言 / gen 通用）。
+   资料只会下载到每个人自己的浏览器里；笔记、闪卡、刷题、问答仍然各自独立。 */
+// 仓库地址自动从网址读取：https://用户名.github.io/仓库名/
+const HOSTED = (() => {
+  const h = { owner: 'OsscarSon', repo: 'Exam', dir: 'materials' };
+  const m = location.hostname.match(/^([^.]+)\.github\.io$/i), seg = location.pathname.split('/')[1];
+  if (m) { h.owner = m[1]; if (seg && !/\.html?$/i.test(seg)) h.repo = decodeURIComponent(seg); }
+  return h;
+})();
+const HOSTED_EXT = /\.(pdf|png|jpe?g|webp|txt|md|markdown|csv|xlsx|xls|docx)$/i;
+const SCI_NAMES = ['数学', '物理', '化学', '生物'];
+async function ghList(path) {
+  const r = await fetch('https://api.github.com/repos/' + HOSTED.owner + '/' + HOSTED.repo + '/contents/' + path.split('/').map(encodeURIComponent).join('/'));
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error('GitHub ' + r.status);
+  return r.json();
+}
+function parseFolder(folder) {
+  const parts = folder.split('@');
+  const name = parts[0].trim().slice(0, 8);
+  const type = TYPES[parts[1]] ? parts[1] : (SCI_NAMES.indexOf(name) >= 0 ? 'sci' : 'gen');
+  return { name: name, type: type };
+}
+async function loadHosted() {
+  if (location.protocol === 'file:') return; // 只在线上网址里生效
+  let list = null;
+  try {
+    const c = JSON.parse(sessionStorage.getItem('exam-hosted2') || 'null');
+    if (c && Date.now() - c.t < 600000) list = c.list;
+  } catch (e) { list = null; }
+  if (!list) {
+    try {
+      const root = await ghList('');
+      if (!root) return;
+      list = [];
+      const addDir = async (d) => {
+        const items = await ghList(d.path);
+        (items || []).filter(x => x.type === 'file' && HOSTED_EXT.test(x.name)).forEach(x => list.push({ folder: d.name, name: x.name, size: x.size, path: x.path }));
+      };
+      // 仓库最外层的每个文件夹都当作一个学科；叫 materials（不分大小写）的文件夹，则读它里面的子文件夹
+      for (const d of root.filter(x => x.type === 'dir' && x.name.charAt(0) !== '.')) {
+        if (d.name.toLowerCase() === HOSTED.dir) {
+          for (const s of ((await ghList(d.path)) || []).filter(x => x.type === 'dir')) await addDir(s);
+        } else await addDir(d);
+      }
+      try { sessionStorage.setItem('exam-hosted2',JSON.stringify({ t: Date.now(), list: list })); } catch (e) { /* ignore */ }
+    } catch (e) { return; }
+  }
+  const hid = S.settings.hidden = S.settings.hidden || [];
+  let changed = false;
+  const todo = [];
+  for (const it of list) {
+    const sj = parseFolder(it.folder);
+    if (!sj.name || BAD_NAMES.indexOf(sj.name) >= 0 || hid.indexOf('subj:' + sj.name) >= 0) continue;
+    if (subjNames().indexOf(sj.name) < 0) {
+      if (S.subjects.length >= MAX_SUBJECTS) continue;
+      S.subjects.push({ name: sj.name, type: sj.type, pal: pickPal(), pub: false, shared: true });
+      S.data[sj.name] = PER(); changed = true;
+    }
+    const id = 'hs:' + sj.name + '/' + it.name;
+    if (hid.indexOf(id) >= 0) continue;
+    const ex = files.find(f => f.id === id);
+    if (ex && ex.size === it.size) continue;
+    todo.push({ id: id, path: it.path, name: it.name, subject: sj.name, ex: ex });
+  }
+  if (changed) { save(); renderSubjectNav(); renderSubject(); }
+  if (!todo.length) return;
+  toast('正在载入共享资料（' + todo.length + ' 份），第一次会比较慢……');
+  let ok = 0; const bad = [];
+  for (const t of todo) {
+    try {
+      const res = await fetch(t.path.split('/').map(encodeURIComponent).join('/'));
+      if (!res.ok) throw new Error('下载失败（' + res.status + '）');
+      const rec = await readFile(new File([await res.blob()], t.name), null);
+      const old = rec.id;
+      rec.id = t.id; rec.subject = t.subject; rec.shared = true; rec.selected = t.ex ? t.ex.selected !== false : true;
+      if (old !== rec.id) idbDel(old);
+      if (t.ex) files = files.filter(f => f.id !== t.ex.id);
+      files.push(rec); await idbPut(rec); renderFiles(); ok++;
+    } catch (e) { bad.push(t.name + '：' + ((e && e.message) || e)); }
+  }
+  renderFiles();
+  toast('共享资料已载入 ' + ok + ' 份' + (bad.length ? '，' + bad.length + ' 份失败' : ''), bad.length ? 'error' : '');
+  if (bad.length) setErr('files', bad.join('\n'));
+}
+
+/* ---------- 历史版本：笔记 / 闪卡 / 模拟题，每类每学科保留最近 10 版（存在 IndexedDB） ---------- */
+const HIST_MAX = 10;
+const KIND_NAME = { notes: '笔记', cards: '闪卡', quiz: '模拟题' };
+let hist = [];
+const histPut = r => idbTx('hist', 'readwrite', st => st.put(r)).catch(() => {});
+const histDel = id => idbTx('hist', 'readwrite', st => st.delete(id)).catch(() => {});
+const histOf = (kind, subj) => hist.filter(h => h.subj === (subj || S.settings.subject) && h.kind === kind).sort((a, b) => b.ts - a.ts);
+function snapOf(kind, subj) {
+  const d = S.data[subj || S.settings.subject]; if (!d) return null;
+  if (kind === 'notes') return d.notes ? { notes: d.notes, notesMeta: d.notesMeta } : null;
+  if (kind === 'cards') return d.cards.length ? { cards: JSON.parse(JSON.stringify(d.cards)) } : null;
+  return d.quiz.length ? JSON.parse(JSON.stringify({ quiz: d.quiz, qi: d.qi, qres: d.qres })) : null;
+}
+function pushHist(kind, subj) {
+  subj = subj || S.settings.subject;
+  const v = snapOf(kind, subj); if (!v) return;
+  const js = JSON.stringify(v), top = histOf(kind, subj)[0];
+  if (top && JSON.stringify(top.v) === js) return;
+  const rec = { id: subj + '|' + kind + '|' + Date.now() + Math.random().toString(36).slice(2, 6), subj: subj, kind: kind, ts: Date.now(), v: v };
+  hist.push(rec); histPut(rec);
+  histOf(kind, subj).slice(HIST_MAX).forEach(h => { hist = hist.filter(x => x !== h); histDel(h.id); });
+}
+function ensureRoom(kind) {
+  const list = histOf(kind), cur = snapOf(kind);
+  if (busy) return Promise.resolve(false);
+  if (!cur || list.length < HIST_MAX || JSON.stringify(list[0].v) === JSON.stringify(cur)) return Promise.resolve(true);
+  return new Promise(resolve => {
+    const d = $('#dlgFull'), ul = $('#fList'); let settled = false;
+    $('#fTitle').textContent = '「' + S.settings.subject + '」的' + KIND_NAME[kind] + '历史已满 ' + HIST_MAX + ' 版';
+    ul.innerHTML = '';
+    list.forEach((h, i) => {
+      const li = document.createElement('li'); li.className = 'file hrow';
+      const t = document.createElement('span'); t.className = 'fmeta'; t.textContent = new Date(h.ts).toLocaleString() + (i === list.length - 1 ? '（最早）' : '');
+      const pv = document.createElement('span'); pv.className = 'hp'; pv.textContent = histPreview(h);
+      const b = document.createElement('button'); b.className = 'btn small badb'; b.type = 'button'; b.textContent = '删掉这版';
+      b.onclick = () => { settled = true; hist = hist.filter(y => y !== h); histDel(h.id); renderHistBars(); d.close(); resolve(true); };
+      li.append(t, pv, b); ul.appendChild(li);
+    });
+    $('#btnFCancel').onclick = () => d.close();
+    d.onclose = () => { if (!settled) { settled = true; resolve(false); } };
+    if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+  });
+}
+function restoreHist(rec) {
+  const kind = rec.kind, d = S.data[S.settings.subject];
+  hist = hist.filter(x => x !== rec); histDel(rec.id);
+  pushHist(kind);
+  const v = rec.v;
+  if (kind === 'notes') { d.notes = v.notes; d.notesMeta = v.notesMeta; }
+  else if (kind === 'cards') { d.cards = v.cards; cardPos = 0; cardShown = false; cardFilter = 'all'; }
+  else { d.quiz = v.quiz; d.qi = v.qi || 0; d.qres = v.qres || {}; }
+  save(); renderNotes(); renderCards(); renderQuiz(); renderHistBars();
+  toast('已恢复到 ' + new Date(rec.ts).toLocaleString() + ' 的' + KIND_NAME[kind]);
+}
+function histPreview(h) {
+  const v = h.v;
+  if (h.kind === 'notes') return shortText((v.notes || '').replace(/[#*>`$\n]+/g, ' ').trim(), 40);
+  if (h.kind === 'cards') return v.cards.length + ' 张 · ' + shortText(v.cards[0] ? v.cards[0].q : '', 30);
+  return v.quiz.length + ' 道 · ' + shortText(v.quiz[0] ? v.quiz[0].stem : '', 30);
+}
+function openHist(kind, expanded) {
+  const list = histOf(kind);
+  $('#hTitle').textContent = '「' + S.settings.subject + '」' + KIND_NAME[kind] + '的历史版本（' + list.length + '/' + HIST_MAX + ' 版）';
+  const ul = $('#hList'); ul.innerHTML = '';
+  if (!list.length) { const li = document.createElement('li'); li.className = 'empty'; li.textContent = '还没有历史版本。重新生成之后，上一版会自动存在这里。'; ul.appendChild(li); }
+  (expanded ? list : list.slice(0, 3)).forEach(h => {
+    const li = document.createElement('li'); li.className = 'file hrow';
+    const t = document.createElement('span'); t.className = 'fmeta'; t.textContent = new Date(h.ts).toLocaleString();
+    const pv = document.createElement('span'); pv.className = 'hp'; pv.textContent = histPreview(h);
+    const b = document.createElement('button'); b.className = 'btn small line'; b.type = 'button'; b.textContent = '恢复';
+    b.onclick = () => { if (busy) return; $('#dlgHist').close(); restoreHist(h); };
+    const x = document.createElement('button'); x.className = 'icon'; x.type = 'button'; x.textContent = '✕'; x.title = '删除这一版'; x.setAttribute('aria-label', '删除这一版');
+    x.onclick = () => { hist = hist.filter(y => y !== h); histDel(h.id); openHist(kind, expanded); renderHistBars(); };
+    li.append(t, pv, b, x); ul.appendChild(li);
+  });
+  if (list.length > 3) {
+    const li = document.createElement('li'); li.className = 'file'; li.style.justifyContent = 'center';
+    const m = document.createElement('button'); m.className = 'btn small line'; m.type = 'button';
+    m.textContent = expanded ? '收起，只看最近 3 版' : '展开更多（还有 ' + (list.length - 3) + ' 版）';
+    m.onclick = () => openHist(kind, !expanded); li.appendChild(m); ul.appendChild(li);
+  }
+  const d = $('#dlgHist'); if (d.showModal) { if (!d.open) d.showModal(); } else d.setAttribute('open', '');
+}
+function renderHistBars() {
+  const gens = { notes: genNotes, cards: genCards, quiz: genQuiz };
+  ['notes', 'cards', 'quiz'].forEach(kind => {
+    const el = $('#hb-' + kind); if (!el) return;
+    const n = histOf(kind).length, has = !!snapOf(kind);
+    el.innerHTML = ''; el.hidden = !has && !n; if (el.hidden) return;
+    const mk = (txt, fn, gen) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small line'; b.textContent = txt; if (gen) b.setAttribute('data-gen', ''); b.onclick = fn; el.appendChild(b); return b; };
+    mk('🔄 重新生成', gens[kind], true);
+    const u = mk('↩ 撤回（回到上一版）', () => { if (busy) return; const h = histOf(kind)[0]; if (h) restoreHist(h); });
+    if (!n) u.disabled = true;
+    mk('🕘 历史版本（' + n + '/' + HIST_MAX + ' 版）', () => openHist(kind, false));
+    if (kind === 'notes' && has) mk('🗑 删除这份笔记', () => $('#btnDelNotes').click());
+  });
+}
+
+/* ---------- 问答：重新回答 / 撤回上一问 ---------- */
+function regenChat() {
+  if (busy || !S.chat.length) return;
+  const removed = S.chat[S.chat.length - 1].role === 'model' ? S.chat.pop() : null;
+  if (!S.chat.length || S.chat[S.chat.length - 1].role !== 'user') { if (removed) S.chat.push(removed); return; }
+  renderChat();
+  run('chat', '正在重新回答', async (signal) => {
+    try {
+      const hasImgs = S.chat.some(m => m.imgs && m.imgs.length);
+      const ctx = await gatherContext(hasImgs, signal);
+      const hs = await buildHistory();
+      const head = ctx.count ? [
+        { role: 'user', parts: ctx.parts.concat([{ text: '请把以上资料作为后续问答的依据。' }]) },
+        { role: 'model', parts: [{ text: '好的，我已读完这些资料，请提问。' }] }
+      ] : [];
+      const sys = systemPrompt({ images: hasImgs, noMaterials: !ctx.count }) + '\n回答先给结论，再给必要的步骤。';
+      const r = await callGemini({ system: sys, contents: head.concat(hs), signal: signal });
+      S.chat.push({ role: 'model', text: r.text }); save(); renderChat();
+    } catch (e) { if (removed) S.chat.push(removed); renderChat(); throw e; }
+  });
+}
+function undoChat() {
+  if (busy || !S.chat.length) return;
+  const subj = S.settings.subject, popped = [];
+  if (S.chat[S.chat.length - 1].role === 'model') popped.unshift(S.chat.pop());
+  if (S.chat.length && S.chat[S.chat.length - 1].role === 'user') popped.unshift(S.chat.pop());
+  if (!popped.length) return;
+  save(); renderChat();
+  const um = popped.find(m => m.role === 'user'), ta = $('#chatInput');
+  if (um && !ta.value.trim()) ta.value = um.text === IMG_ASK ? '' : um.text;
+  undoToast('已撤回上一问' + (um ? '（问题放回了输入框）' : ''), () => { popped.forEach(m => S.data[subj].chat.push(m)); save(); if (S.settings.subject === subj) renderChat(); });
+}
+
+/* ---------- 备份 / 导入（不含 API key） ---------- */
+async function exportBackup() {
+  const withFiles = confirm('备份里要包含上传的资料文件吗？\n\n确定 = 包含（文件可能很大）\n取消 = 只备份笔记、闪卡、题目、错题本、对话和历史版本');
+  const out = { app: 'exam-helper-backup', v: 1, time: new Date().toISOString(),
+    state: JSON.parse(JSON.stringify({ settings: { model: S.settings.model, subject: S.settings.subject }, subjects: S.subjects, data: S.data })),
+    hist: hist, imgs: [], files: [] };
+  const ids = new Set();
+  S.subjects.forEach(sj => { const d = S.data[sj.name]; ['chat', 'wrong', 'quiz'].forEach(k => (d[k] || []).forEach(m => (m.imgs || []).forEach(i => ids.add(i)))); });
+  for (const id of ids) { const r = await getImg(id); if (r) out.imgs.push(r); }
+  if (withFiles) for (const f of files) {
+    const r = { id: f.id, name: f.name, size: f.size, subject: f.subject, mime: f.mime, kind: f.kind === 'remote' ? 'inline' : f.kind, selected: f.selected, shared: !!f.shared };
+    if (f.kind === 'remote') { if (!f.blob) continue; r.data = await blobToB64(f.blob); } else r.data = f.data;
+    out.files.push(r);
+  }
+  download('考前助手-备份-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(out));
+  toast('已生成备份文件（' + (withFiles ? '含资料' : '不含资料') + '）');
+}
+async function importBackup(file) {
+  let o; try { o = JSON.parse(await file.text()); } catch (e) { return toast('这不是有效的备份文件', 'error'); }
+  if (!o || o.app !== 'exam-helper-backup' || !o.state || !Array.isArray(o.state.subjects)) return toast('这不是「考前助手」的备份文件', 'error');
+  if (!confirm('导入会覆盖同名学科的笔记、闪卡、题目、错题本和对话（覆盖前的笔记 / 闪卡 / 题目会先存进历史版本）。继续吗？')) return;
+  const names = [];
+  for (const sj of o.state.subjects) {
+    if (!sj || typeof sj.name !== 'string') continue;
+    const name = sj.name.trim().slice(0, 12);
+    if (!name || BAD_NAMES.indexOf(name) >= 0) continue;
+    let cur = S.subjects.find(x => x.name === name);
+    if (cur) ['notes', 'cards', 'quiz'].forEach(k => pushHist(k, name));
+    else {
+      if (S.subjects.length >= MAX_SUBJECTS) continue;
+      cur = { name: name, type: TYPES[sj.type] ? sj.type : 'gen', pal: (Number.isInteger(sj.pal) && sj.pal >= 0 && sj.pal <= 7) ? sj.pal : pickPal(), pub: !!sj.pub, shared: !!sj.shared };
+      S.subjects.push(cur);
+    }
+    const src = (o.state.data && o.state.data[sj.name]) || {}, d = PER();
+    PER_KEYS.forEach(k => { if (src[k] !== undefined && src[k] !== null) d[k] = src[k]; });
+    ['cards', 'quiz', 'wrong', 'chat'].forEach(k => { if (!Array.isArray(d[k])) d[k] = []; });
+    if (!d.qres || typeof d.qres !== 'object') d.qres = {};
+    if (typeof d.qi !== 'number') d.qi = 0;
+    if (typeof d.notes !== 'string') d.notes = '';
+    if (typeof d.notesMeta !== 'string') d.notesMeta = '';
+    S.data[name] = d; names.push(name);
+  }
+  for (const r of (o.imgs || [])) if (r && typeof r.id === 'string' && typeof r.data === 'string' && typeof r.mime === 'string') await imgPut({ id: r.id, mime: r.mime, data: r.data });
+  for (const h of (o.hist || [])) {
+    if (!h || typeof h.id !== 'string' || names.indexOf(h.subj) < 0 || !KIND_NAME[h.kind] || !h.v || hist.some(x => x.id === h.id)) continue;
+    const rec = { id: h.id, subj: h.subj, kind: h.kind, ts: Number(h.ts) || Date.now(), v: h.v };
+    hist.push(rec); await histPut(rec);
+  }
+  let nf = 0;
+  for (const f of (o.files || [])) {
+    if (!f || typeof f.id !== 'string' || names.indexOf(f.subject) < 0 || files.some(x => x.id === f.id) || typeof f.data !== 'string') continue;
+    const rec = { id: f.id, name: String(f.name), size: f.size, subject: f.subject, mime: f.mime, kind: f.kind === 'text' ? 'text' : 'inline', data: f.data, selected: f.selected !== false, shared: !!f.shared };
+    files.push(rec); await idbPut(rec); nf++;
+  }
+  if (!S.subjects.some(x => x.name === S.settings.subject)) S.settings.subject = S.subjects[0].name;
+  save(); $('#dlg').close(); renderSubjectNav(); refreshAll(); paintShare();
+  toast('已导入 ' + names.length + ' 个学科' + (nf ? '、' + nf + ' 份资料' : ''));
+}
+
+/* ---------- 界面事件 ---------- */
+function showTab(name) {
+  $$('.tab').forEach(t => { const on = t.getAttribute('data-tab') === name; t.classList.toggle('active', on); t.setAttribute('aria-selected', String(on)); });
+  $$('.panel').forEach(p => { const on = p.id === 'panel-' + name; p.hidden = !on; p.classList.toggle('active', on); });
+}
+function openSettings() {
+  $('#keyInput').value = S.settings.key || '';
+  $('#keyInput').type = 'password'; $('#btnShowKey').textContent = '显示';
+  const m = S.settings.model;
+  const known = ['gemini-3.6-flash', 'gemini-3.5-flash-lite'].indexOf(m) >= 0;
+  $('#modelSel').value = known ? m : '__custom';
+  $('#modelCustom').hidden = known; $('#modelCustom').value = known ? '' : m;
+  $('#testResult').textContent = '';
+  const d = $('#dlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+}
+function readSettingsForm() {
+  const sel = $('#modelSel').value;
+  return { key: $('#keyInput').value.trim(), model: sel === '__custom' ? ($('#modelCustom').value.trim() || 'gemini-3.6-flash') : sel };
+}
+async function testConnection() {
+  const f = readSettingsForm(); const out = $('#testResult');
+  if (!f.key) { out.textContent = '请先粘贴 key。'; return; }
+  const backup = Object.assign({}, S.settings);
+  S.settings.key = f.key; S.settings.model = f.model;
+  out.textContent = '正在连接……';
+  try {
+    await callGemini({ contents: [{ role: 'user', parts: [{ text: '只回复两个字母：OK' }] }], maxTokens: 2048 });
+    out.textContent = '连接成功，key 和模型都可用。';
+  } catch (e) {
+    out.textContent = e && e.code === 'EMPTY' ? '连接成功（模型已响应）。' : ((e && e.message) || String(e));
+  } finally { S.settings = backup; }
+}
+function bindUI() {
+  $$('.tab').forEach(t => t.onclick = () => showTab(t.getAttribute('data-tab')));
+  $('#subjectSeg').onclick = e => {
+    const b = e.target.closest('button'); if (!b || b.disabled) return;
+    if (b.hasAttribute('data-add')) openSubjectDlg('add'); else switchSubject(b.getAttribute('data-subject'));
+  };
+  $('#btnEditSubject').onclick = () => openSubjectDlg('edit');
+  $$('#subTypeSeg button').forEach(b => b.onclick = () => { subjType = b.getAttribute('data-type'); paintSubjType(); });
+  $$('#subPubSeg button').forEach(b => b.onclick = () => { subjPub = b.getAttribute('data-pub') === '1'; paintSubjType(); });
+  $('#btnShare').onclick = exportShare;
+  $('#btnSubSave').onclick = saveSubject;
+  $('#btnSubCancel').onclick = () => $('#dlgSubject').close();
+  $('#btnSubDelete').onclick = deleteSubject;
+  $('#subName').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveSubject(); } });
+  $('#btnAttach').onclick = () => $('#chatImg').click();
+  $('#chatImg').onchange = e => { addImages(e.target.files); e.target.value = ''; };
+  $('#chatInput').addEventListener('paste', e => {
+    const fl = Array.from((e.clipboardData && e.clipboardData.files) || []).filter(f => /^image\//.test(f.type));
+    if (fl.length) { e.preventDefault(); addImages(fl); }
+  });
+  const cb = $('#chatbox');
+  ['dragenter', 'dragover'].forEach(ev => cb.addEventListener(ev, e => { e.preventDefault(); cb.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => cb.addEventListener(ev, e => { e.preventDefault(); cb.classList.remove('over'); }));
+  cb.addEventListener('drop', e => { if (e.dataTransfer && e.dataTransfer.files.length) addImages(e.dataTransfer.files); });
+  $('#btnSettings').onclick = openSettings;
+  $('#btnBannerSettings').onclick = openSettings;
+  $('#btnCloseDlg').onclick = () => $('#dlg').close();
+  $('#btnShowKey').onclick = () => { const i = $('#keyInput'); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; $('#btnShowKey').textContent = show ? '隐藏' : '显示'; };
+  $('#modelSel').onchange = () => { $('#modelCustom').hidden = $('#modelSel').value !== '__custom'; };
+  $('#btnTest').onclick = testConnection;
+  $('#btnSave').onclick = () => {
+    const f = readSettingsForm(); S.settings.key = f.key; S.settings.model = f.model; save(); renderBanner();
+    $('#dlg').close(); toast('已保存');
+  };
+  $('#btnWipe').onclick = async () => {
+    if (!confirm('这会清除本设备上保存的 key、资料、笔记、闪卡、题目和对话，确定吗？')) return;
+    try { localStorage.removeItem(LS_KEY); } catch (e) { /* ignore */ }
+    await idbClear(); location.reload();
+  };
+  const fi = $('#fileInput');
+  fi.onchange = () => { if (fi.files.length) addFiles(fi.files); fi.value = ''; };
+  const drop = $('#drop');
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => { if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+  $('#btnNotes').onclick = genNotes;
+  $('#btnCards').onclick = genCards;
+  $('#btnQuiz').onclick = genQuiz;
+  $('#btnSend').onclick = () => sendChat();
+  $('#chatInput').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendChat(); } });
+  $('#btnClearChat').onclick = () => { if (!S.chat.length) return; const old = S.chat, subj = S.settings.subject; S.chat = []; save(); renderChat(); renderWrong(); undoToast('已清空对话', () => { S.data[subj].chat = old; save(); if (S.settings.subject === subj) { renderChat(); renderWrong(); } }, gcImgs); };
+  $('#btnRegenChat').onclick = regenChat;
+  $('#btnDelNotes').onclick = () => {
+    if (busy || !S.notes) return;
+    const subj = S.settings.subject, old = { notes: S.notes, notesMeta: S.notesMeta };
+    S.notes = ''; S.notesMeta = ''; save(); renderNotes(); renderHistBars();
+    undoToast('已删除「' + subj + '」的笔记', () => { Object.assign(S.data[subj], old); save(); if (S.settings.subject === subj) { renderNotes(); renderHistBars(); } });
+  };
+  $('#btnClearFiles').onclick = () => {
+    if (busy) return;
+    const subj = S.settings.subject, gone = files.filter(f => f.subject === subj);
+    if (!gone.length) return;
+    const tomb = [];
+    gone.forEach(f => { idbDel(f.id); if (f.shared) { tomb.push(f.id); (S.settings.hidden = S.settings.hidden || []).push(f.id); } });
+    files = files.filter(f => f.subject !== subj); save(); renderFiles();
+    undoToast('已清空「' + subj + '」的 ' + gone.length + ' 份资料', () => {
+      gone.forEach(f => { files.push(f); idbPut(f); });
+      S.settings.hidden = (S.settings.hidden || []).filter(id => tomb.indexOf(id) < 0); save();
+      if (S.settings.subject === subj) renderFiles();
+    });
+  };
+  $('#btnUndoChat').onclick = undoChat;
+  $('#btnHClose').onclick = () => $('#dlgHist').close();
+  $('#btnBackup').onclick = exportBackup;
+  $('#btnImport').onclick = () => $('#importInput').click();
+  $('#importInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) importBackup(f); };
+  $('#btnCancel').onclick = () => { if (ctrl) ctrl.abort(); };
+  $('#btnCopyNotes').onclick = () => copyText(S.notes);
+  $('#btnDownNotes').onclick = () => download('复习笔记-' + S.settings.subject + '.md', S.notes);
+  $('#btnPrintNotes').onclick = () => { showTab('notes'); window.print(); };
+}
+
+async function init() {
+  loadState();
+  if (typeof DOMPurify !== 'undefined') {
+    DOMPurify.addHook('afterSanitizeAttributes', n => { if (n.tagName === 'A') { n.setAttribute('target', '_blank'); n.setAttribute('rel', 'noopener noreferrer'); } });
+  }
+  bindUI();
+  files = await idbAll();
+  hist = await idbTx('hist', 'readonly', st => st.getAll()).then(r => r || []).catch(() => []);
+  await importShared();
+  files.forEach(f => {
+    if (f.selected === undefined) f.selected = true;
+    if (!f.subject) { f.subject = S.settings.subject; idbPut(f); } // 旧版本传的资料归到当时选中的学科
+  });
+  renderSubjectNav(); renderSubject(); paintShare(); renderBanner(); renderFiles(); renderNotes(); renderCards(); renderQuiz(); renderChat(); renderHistBars();
+  gcImgs();
+  loadHosted();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
