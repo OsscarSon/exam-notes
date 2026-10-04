@@ -447,6 +447,11 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
     <div class="inline"><button class="btn line" id="btnBackup" type="button">备份到文件</button><button class="btn line" id="btnImport" type="button">从文件导入</button></div>
     <input class="vh" type="file" id="importInput" accept=".json,application/json">
     <p class="muted fine">备份包含笔记、闪卡、题目、错题本、对话和历史版本，不含 API key。</p>
+    <label for="syncInput">云端同步网址（可不填）</label>
+    <input id="syncInput" type="text" autocomplete="off" spellcheck="false" placeholder="https://xxxx.workers.dev">
+    <div class="inline" style="margin-top:8px"><button class="btn line" id="btnSyncNow" type="button">立即同步</button></div>
+    <p class="muted fine" id="syncStatus"></p>
+    <p class="muted fine">填了之后，用同一个 API key 的设备会自动同步笔记、闪卡、题目、错题本和对话文字（资料文件和图片不同步）。内容在上传前已用 key 加密，云端只存密文。不填就完全不同步。</p>
     <div id="testResult" role="status"></div>
     <div class="actions">
       <button class="btn" id="btnTest" type="button">测试连接</button>
@@ -761,6 +766,7 @@ function loadState() {
 }
 function save() {
   clearTimeout(saveT);
+  scheduleSync();
   saveT = setTimeout(() => { try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) { /* 存储满了就算了 */ } }, 200);
 }
 
@@ -1802,6 +1808,154 @@ async function loadHosted() {
   if (bad.length) setErr('files', bad.join('\n'));
 }
 
+/* ---------- 云端同步（可选）：同一个 API key 的设备共享笔记 / 闪卡 / 题目 / 错题本 / 对话文字 ----------
+   数据在浏览器里用 key 加密后才上传，云端（你自己的 Cloudflare Worker）只存密文。资料文件和图片不同步。
+   设置里不填同步网址，就完全不会发出任何同步请求。 */
+let syncTimer = null, syncBusy = false, lastPullAt = 0, syncKeyCache = null;
+const SYNC_SALT = 'exam-helper-sync-v1';
+const te = new TextEncoder(), td = new TextDecoder();
+function hash53(str) {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+}
+function b64e(buf) { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
+function b64d(s) { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+function syncBase() { return (S.settings.syncUrl || '').trim().replace(/\/+$/, ''); }
+function syncOn() { return /^https:\/\//i.test(syncBase()) && !!(S.settings.key || '').trim(); }
+function syncUrlFromForm() { return $('#syncInput').value.trim().replace(/\/+$/, ''); }
+function syncStatus(msg, err, loud) {
+  window._syncMsg = msg;
+  const el = $('#syncStatus'); if (el) el.textContent = msg;
+  if (loud) toast(msg, err ? 'error' : '');
+}
+async function syncKeys() {
+  const key = (S.settings.key || '').trim();
+  if (syncKeyCache && syncKeyCache.key === key) return syncKeyCache;
+  if (!(window.crypto && crypto.subtle)) throw new Error('这个浏览器不支持加密（需要 https 网址）');
+  const idBuf = await crypto.subtle.digest('SHA-256', te.encode('id:' + key));
+  const id = Array.from(new Uint8Array(idBuf)).map(x => x.toString(16).padStart(2, '0')).join('');
+  const base = await crypto.subtle.importKey('raw', te.encode(key), 'PBKDF2', false, ['deriveKey']);
+  const k = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: te.encode(SYNC_SALT), iterations: 100000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  syncKeyCache = { key: key, id: id, k: k };
+  return syncKeyCache;
+}
+function syncSnapshot() {
+  const strip = list => (list || []).map(m => { const c = Object.assign({}, m); delete c.imgs; return c; });
+  const data = {};
+  S.subjects.forEach(sj => {
+    const d = S.data[sj.name];
+    data[sj.name] = { notes: d.notes, notesMeta: d.notesMeta, cards: d.cards, quiz: strip(d.quiz), qi: d.qi, qres: d.qres, wrong: strip(d.wrong), chat: strip(d.chat) };
+  });
+  return { subjects: S.subjects.map(x => ({ name: x.name, type: x.type, pal: x.pal, shared: !!x.shared })), data: data };
+}
+const syncHashNow = () => String(hash53(JSON.stringify(syncSnapshot())));
+function syncHasContent() {
+  return S.subjects.some(sj => { const d = S.data[sj.name]; return d && (d.notes || d.cards.length || d.quiz.length || d.wrong.length || d.chat.length); });
+}
+function normPer(src) {
+  const d = PER();
+  PER_KEYS.forEach(k => { if (src && src[k] !== undefined && src[k] !== null) d[k] = src[k]; });
+  ['cards', 'quiz', 'wrong', 'chat'].forEach(k => { if (!Array.isArray(d[k])) d[k] = []; });
+  if (!d.qres || typeof d.qres !== 'object') d.qres = {};
+  if (typeof d.qi !== 'number') d.qi = 0;
+  if (typeof d.notes !== 'string') d.notes = '';
+  if (typeof d.notesMeta !== 'string') d.notesMeta = '';
+  return d;
+}
+function scheduleSync() {
+  if (!syncOn()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => { if (busy || syncBusy) scheduleSync(); else syncPush(false, false); }, 20000);
+}
+async function syncPush(force, loud) {
+  if (!syncOn() || syncBusy) return;
+  const json = JSON.stringify(syncSnapshot()), h = String(hash53(json));
+  if (!force && h === S.settings.syncHash) return;
+  if (json.length > 4e6) { syncStatus('内容太大（超过约 4 MB），没有同步。可以删掉一些旧对话后再试。', true, loud); return; }
+  syncBusy = true;
+  try {
+    const ks = await syncKeys();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, ks.k, te.encode(json));
+    const ts = Date.now();
+    const r = await fetch(syncBase() + '/s/' + ks.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ts: ts, iv: b64e(iv), data: b64e(ct) }) });
+    if (!r.ok) throw new Error('云端返回 ' + r.status);
+    S.settings.syncTs = ts; S.settings.syncHash = h; save();
+    syncStatus('已同步到云端 · ' + new Date(ts).toLocaleString(), false, loud);
+  } catch (e) {
+    syncStatus('同步失败：' + ((e && e.message) || e), true, loud);
+  } finally { syncBusy = false; }
+}
+async function syncPull(manual) {
+  if (!syncOn() || syncBusy) {
+    if (manual && !syncOn()) syncStatus('请先填好 API key 和以 https:// 开头的同步网址，并点保存。', true, true);
+    return;
+  }
+  lastPullAt = Date.now();
+  let action = 'none', rem = null;
+  syncBusy = true;
+  try {
+    const ks = await syncKeys();
+    const r = await fetch(syncBase() + '/s/' + ks.id, { cache: 'no-store' });
+    if (r.status === 404) action = syncHasContent() ? 'push' : 'none';
+    else if (!r.ok) throw new Error('云端返回 ' + r.status);
+    else {
+      const o = await r.json();
+      if (!(o.ts > (S.settings.syncTs || 0))) action = syncHashNow() !== S.settings.syncHash ? 'push' : 'none';
+      else {
+        let plain;
+        try { plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(o.iv) }, ks.k, b64d(o.data)); }
+        catch (e) { throw new Error('无法解密云端数据（key 对不上）'); }
+        rem = { ts: o.ts, v: JSON.parse(td.decode(plain)) };
+        action = 'apply';
+      }
+    }
+  } catch (e) {
+    syncBusy = false;
+    syncStatus('同步失败：' + ((e && e.message) || e), true, manual);
+    return;
+  }
+  syncBusy = false;
+  if (action === 'push') return syncPush(true, manual);
+  if (action === 'none') return syncStatus('已是最新 · ' + new Date().toLocaleString(), false, manual);
+  const dirty = syncHashNow() !== S.settings.syncHash;
+  if (dirty && syncHasContent() && !confirm('云端有更新的内容，而这台设备上也有还没同步的改动。\n\n确定 = 用云端的（这台设备现在的笔记 / 闪卡 / 题目会先存进历史版本）\n取消 = 保留这台设备的，并覆盖云端')) return syncPush(true, manual);
+  syncApply(rem, manual);
+}
+function syncApply(rem, loud) {
+  const v = rem.v;
+  if (!v || !Array.isArray(v.subjects) || !v.data || typeof v.data !== 'object') { syncStatus('云端数据格式不对，没有应用。', true, loud); return; }
+  const pairs = [];
+  v.subjects.forEach(sj => {
+    if (!sj || typeof sj.name !== 'string') return;
+    const name = sj.name.trim().slice(0, 12);
+    if (!name || BAD_NAMES.indexOf(name) >= 0) return;
+    if (!S.subjects.some(x => x.name === name)) {
+      if (S.subjects.length >= MAX_SUBJECTS) return;
+      S.subjects.push({ name: name, type: TYPES[sj.type] ? sj.type : 'gen', pal: (Number.isInteger(sj.pal) && sj.pal >= 0 && sj.pal <= 7) ? sj.pal : pickPal(), pub: false, shared: !!sj.shared });
+      S.data[name] = PER();
+    }
+    pairs.push([name, sj.name]);
+  });
+  pairs.forEach(p => {
+    const name = p[0], nd = normPer(v.data[p[1]]), od = S.data[name];
+    if (od.notes !== nd.notes) pushHist('notes', name);
+    if (JSON.stringify(od.cards) !== JSON.stringify(nd.cards)) pushHist('cards', name);
+    if (JSON.stringify(od.quiz) !== JSON.stringify(nd.quiz)) pushHist('quiz', name);
+    S.data[name] = nd;
+  });
+  S.settings.syncTs = rem.ts; S.settings.syncHash = syncHashNow(); save();
+  renderSubjectNav(); refreshAll(); gcImgs();
+  syncStatus('已从云端更新 · ' + new Date().toLocaleString(), false, loud);
+  if (!loud) toast('已从云端更新笔记等内容');
+}
+
 /* ---------- 历史版本：笔记 / 闪卡 / 模拟题，每类每学科保留最近 10 版（存在 IndexedDB） ---------- */
 const HIST_MAX = 10;
 const KIND_NAME = { notes: '笔记', cards: '闪卡', quiz: '模拟题' };
@@ -2005,6 +2159,7 @@ function openSettings() {
   $('#modelSel').value = known ? m : '__custom';
   $('#modelCustom').hidden = known; $('#modelCustom').value = known ? '' : m;
   $('#testResult').textContent = '';
+  $('#syncInput').value = S.settings.syncUrl || ''; $('#syncStatus').textContent = window._syncMsg || '';
   const d = $('#dlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', '');
 }
 function readSettingsForm() {
@@ -2055,7 +2210,9 @@ function bindUI() {
   $('#modelSel').onchange = () => { $('#modelCustom').hidden = $('#modelSel').value !== '__custom'; };
   $('#btnTest').onclick = testConnection;
   $('#btnSave').onclick = () => {
-    const f = readSettingsForm(); S.settings.key = f.key; S.settings.model = f.model; save(); renderBanner();
+    const f = readSettingsForm();
+    if (f.key !== (S.settings.key || '')) { S.settings.syncTs = 0; S.settings.syncHash = ''; } // 换了 key，就是另一个云端空间
+    S.settings.key = f.key; S.settings.model = f.model; S.settings.syncUrl = syncUrlFromForm(); save(); renderBanner(); syncPull(false);
     $('#dlg').close(); toast('已保存');
   };
   $('#btnWipe').onclick = async () => {
@@ -2129,6 +2286,16 @@ async function init() {
   renderSubjectNav(); renderSubject(); paintShare(); renderBanner(); renderFiles(); renderNotes(); renderCards(); renderQuiz(); renderChat(); renderHistBars();
   gcImgs();
   loadHosted();
+  syncPull(false);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') syncPush(false, false);
+    else if (Date.now() - lastPullAt > 30000 && !busy) syncPull(false);
+  });
+  $('#btnSyncNow').onclick = () => {
+    const f = readSettingsForm();
+    if (f.key !== (S.settings.key || '')) { S.settings.syncTs = 0; S.settings.syncHash = ''; }
+    S.settings.key = f.key; S.settings.syncUrl = syncUrlFromForm(); save(); renderBanner(); syncPull(true);
+  };
 }
 document.addEventListener('DOMContentLoaded', init);
 </script>
