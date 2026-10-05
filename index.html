@@ -49,6 +49,18 @@ body[data-pal="7"]{--a1:#7fd6f2;--a2:#8fb0ff;--a3:#b6f0d6}
   }
 }
 @media (max-width:640px){ :root{ --mx:12px; --pl:24px; } }
+/* 外观主题：只覆盖颜色变量；默认（不设 data-theme）保持原来的样子。写在 body 上，权重高于学科换色的 data-pal */
+body[data-theme="night"],body[data-theme="night"][data-pal]{--paper:#070b1a;--dot:rgba(170,200,255,.11);--glass:rgba(16,22,44,.66);--glass-line:rgba(255,255,255,.09);--hover:rgba(255,255,255,.07);--shadow:0 0 0 1px rgba(255,255,255,.04),0 30px 70px -30px rgba(0,0,0,.7);--sheet:#141b30;--sheet2:#1b2440;--ink:#e8eef2;--muted:#9bb0bf;--line:#2b3560;--margin:rgba(220,120,120,.38);--hl:#ffe45e;--hl-ink:#10202b;--accent:#ffe45e;--accent-ink:#10202b;--ok:#6fd1a2;--ok-soft:#173a2c;--bad:#ff948b;--bad-soft:#40201f;--warn:#f0c46a;--warn-soft:#3a2f14;--glow:.30;--wall:radial-gradient(ellipse 70% 55% at 18% 0%,#2b2f6b 0%,transparent 70%),radial-gradient(ellipse 60% 50% at 92% 28%,#4a2a6e 0%,transparent 70%),linear-gradient(180deg,#0a1030 0%,#05060f 100%);--a1:#5b6bff;--a2:#a45bff;--a3:#3cc5ff;--fx:rgba(255,255,255,.9);color-scheme:dark}
+body[data-theme="sunset"],body[data-theme="sunset"][data-pal]{--paper:#1a0f1f;--dot:rgba(170,200,255,.11);--glass:rgba(40,18,40,.66);--glass-line:rgba(255,255,255,.09);--hover:rgba(255,255,255,.07);--shadow:0 0 0 1px rgba(255,255,255,.04),0 30px 70px -30px rgba(0,0,0,.7);--sheet:#2a1830;--sheet2:#34203a;--ink:#fbeee8;--muted:#d2b3b8;--line:#52324f;--margin:rgba(220,120,120,.38);--hl:#ffe45e;--hl-ink:#2a1218;--accent:#ffd27a;--accent-ink:#2a1218;--ok:#6fd1a2;--ok-soft:#173a2c;--bad:#ff948b;--bad-soft:#40201f;--warn:#f0c46a;--warn-soft:#3a2f14;--glow:.30;--wall:radial-gradient(ellipse 80% 55% at 85% 100%,#f08a4b 0%,transparent 70%),radial-gradient(ellipse 70% 60% at 10% 10%,#5a2a7a 0%,transparent 70%),linear-gradient(170deg,#2a1240 0%,#7a2f5a 55%,#c9604f 100%);--a1:#ff8a5c;--a2:#ff5c8a;--a3:#ffc15c;--fx:rgba(255,230,200,.9);color-scheme:dark}
+body[data-theme="sakura"],body[data-theme="sakura"][data-pal]{--paper:#fff5f8;--dot:rgba(200,90,130,.14);--glass:rgba(255,255,255,.74);--glass-line:rgba(255,255,255,.9);--hover:rgba(255,255,255,.6);--shadow:0 0 0 1px rgba(23,38,63,.06),0 28px 60px -30px rgba(40,64,128,.38);--sheet:#ffffff;--sheet2:#fff1f6;--ink:#3b2330;--muted:#7d5f6c;--line:#f0d3de;--margin:rgba(235,110,140,.42);--hl:#ffe45e;--hl-ink:#3b2330;--accent:#3b2330;--accent-ink:#ffffff;--ok:#1b7f55;--ok-soft:#d9f0e4;--bad:#c23b32;--bad-soft:#fadcd9;--warn:#8a5a00;--warn-soft:#fff1c9;--glow:.55;--wall:radial-gradient(ellipse 70% 55% at 15% 0%,#ffd6e6 0%,transparent 70%),radial-gradient(ellipse 60% 50% at 95% 22%,#e7d9ff 0%,transparent 70%),linear-gradient(180deg,#fff7fa 0%,#ffeef4 100%);--a1:#ffb3cf;--a2:#e0c8ff;--a3:#ffd9c2;--fx:rgba(236,120,160,.6);color-scheme:light}
+body[data-theme="sakura"] .md h2{background:linear-gradient(transparent 58%,var(--hl) 58%)}
+body[data-theme="mint"],body[data-theme="mint"][data-pal]{--paper:#f1fbf6;--dot:rgba(40,130,100,.14);--glass:rgba(255,255,255,.74);--glass-line:rgba(255,255,255,.9);--hover:rgba(255,255,255,.6);--shadow:0 0 0 1px rgba(23,38,63,.06),0 28px 60px -30px rgba(40,64,128,.38);--sheet:#ffffff;--sheet2:#eef8f3;--ink:#14352c;--muted:#55746a;--line:#cfe6dc;--margin:rgba(235,110,110,.42);--hl:#ffe45e;--hl-ink:#14352c;--accent:#14352c;--accent-ink:#ffffff;--ok:#1b7f55;--ok-soft:#d9f0e4;--bad:#c23b32;--bad-soft:#fadcd9;--warn:#8a5a00;--warn-soft:#fff1c9;--glow:.55;--wall:radial-gradient(ellipse 70% 55% at 10% 0%,#c9f3df 0%,transparent 70%),radial-gradient(ellipse 60% 50% at 95% 25%,#d6ecff 0%,transparent 70%),linear-gradient(180deg,#f3fcf8 0%,#e8f7f0 100%);--a1:#8fe3c2;--a2:#a9d8ff;--a3:#f2f0a4;--fx:rgba(40,140,110,.5);color-scheme:light}
+body[data-theme="mint"] .md h2{background:linear-gradient(transparent 58%,var(--hl) 58%)}
+body[data-theme="paper"],body[data-theme="paper"][data-pal]{--paper:#f6efdf;--dot:rgba(150,110,50,.14);--glass:rgba(255,250,238,.78);--glass-line:rgba(255,255,255,.9);--hover:rgba(255,255,255,.6);--shadow:0 0 0 1px rgba(23,38,63,.06),0 28px 60px -30px rgba(40,64,128,.38);--sheet:#fffaf0;--sheet2:#f6eddb;--ink:#3a2f1e;--muted:#7a6a50;--line:#ddd0b4;--margin:rgba(235,110,110,.42);--hl:#ffe45e;--hl-ink:#3a2f1e;--accent:#3a2f1e;--accent-ink:#ffffff;--ok:#1b7f55;--ok-soft:#d9f0e4;--bad:#c23b32;--bad-soft:#fadcd9;--warn:#8a5a00;--warn-soft:#fff1c9;--glow:.45;--wall:linear-gradient(180deg,#faf3e3 0%,#f1e7d0 100%);--a1:#f3d9a4;--a2:#f0c9b0;--a3:#d9e4b8;--fx:rgba(150,110,50,.4);color-scheme:light}
+body[data-theme="paper"] .md h2{background:linear-gradient(transparent 58%,var(--hl) 58%)}
+body[data-theme="night"] .md h2{background:linear-gradient(transparent 58%,#6b5d12 58%)}
+body[data-theme="sunset"] .md h2{background:linear-gradient(transparent 58%,#6b5d12 58%)}
+#fx{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
@@ -57,7 +69,7 @@ body{
   background-color:var(--paper);
 }
 /* 极光背景：三团色光缓慢漂移，切换学科时颜色会渐变；点阵只在页面上方可见 */
-.aurora{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:var(--paper)}
+.aurora{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background-color:var(--paper);background-image:var(--wall,none)}
 .aurora::after{content:"";position:absolute;inset:0;
   background-image:radial-gradient(var(--dot) 1px,transparent 1.3px);background-size:24px 24px;
   -webkit-mask-image:radial-gradient(ellipse 80% 55% at 50% 0%,#000 0%,transparent 80%);
@@ -319,7 +331,9 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
 </style>
 </head>
 <body>
+<script>try{var _l=JSON.parse(localStorage.getItem("exam-look")||"{}");if(_l.theme&&_l.theme!=="auto")document.body.setAttribute("data-theme",_l.theme)}catch(e){}</script>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<canvas id="fx" aria-hidden="true"></canvas>
 <div id="toasts" class="toasts no-print" aria-live="polite"></div>
 <div id="busy" class="busy no-print" role="status" hidden><span class="dot"></span><span id="busyText"></span><button id="btnCancel" class="btn small">取消</button></div>
 
@@ -460,6 +474,23 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
       <option value="__custom">其他（自己填写）</option>
     </select>
     <input id="modelCustom" type="text" placeholder="填写模型名" style="margin-top:8px" hidden>
+    <label for="themeSel">外观主题（立即生效，只在这台设备）</label>
+    <select id="themeSel">
+      <option value="auto">默认（跟随系统）</option>
+      <option value="night">星空夜</option>
+      <option value="sunset">黄昏</option>
+      <option value="sakura">樱花</option>
+      <option value="mint">薄荷</option>
+      <option value="paper">米黄纸</option>
+    </select>
+    <label for="fxSel">背景氛围</label>
+    <select id="fxSel">
+      <option value="none">无</option>
+      <option value="stars">星点</option>
+      <option value="sakura">飘落樱花</option>
+      <option value="rain">细雨</option>
+    </select>
+    <p class="muted fine">背景氛围会多耗一点电；页面不在前台时自动暂停，系统开了「减少动画」时不显示。</p>
     <label>备份与恢复</label>
     <div class="inline"><button class="btn line" id="btnBackup" type="button">备份到文件</button><button class="btn line" id="btnImport" type="button">从文件导入</button></div>
     <input class="vh" type="file" id="importInput" accept=".json,application/json">
@@ -1871,6 +1902,92 @@ async function loadHosted() {
   if (bad.length) setErr('files', bad.join('\n'));
 }
 
+/* ---------- 外观：主题 + 背景氛围（只存在这台设备的浏览器里，不参与备份和同步） ---------- */
+const LOOK_KEY = 'exam-look', THEMES = ['auto', 'night', 'sunset', 'sakura', 'mint', 'paper'], FX_LIST = ['none', 'stars', 'sakura', 'rain'];
+let look = { theme: 'auto', fx: 'none' };
+try {
+  const l = JSON.parse(localStorage.getItem(LOOK_KEY) || '{}');
+  if (THEMES.indexOf(l.theme) >= 0) look.theme = l.theme;
+  if (FX_LIST.indexOf(l.fx) >= 0) look.fx = l.fx;
+} catch (e) { /* ignore */ }
+let fxRaf = 0, fxLast = 0, fxItems = [], fxW = 0, fxH = 0, fxDpr = 1, fxT = 0, fxResizeT = 0;
+function fxStop() {
+  if (fxRaf) cancelAnimationFrame(fxRaf);
+  fxRaf = 0;
+  const c = $('#fx');
+  if (c) { try { c.getContext('2d').clearRect(0, 0, c.width, c.height); } catch (e) { /* ignore */ } }
+}
+function fxStart() {
+  fxStop();
+  const c = $('#fx');
+  if (!c || look.fx === 'none' || document.hidden) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  try {
+    fxDpr = Math.min(window.devicePixelRatio || 1, 1.5); fxW = window.innerWidth; fxH = window.innerHeight;
+    c.width = Math.round(fxW * fxDpr); c.height = Math.round(fxH * fxDpr);
+    const base = look.fx === 'stars' ? 70 : (look.fx === 'sakura' ? 26 : 80);
+    const n = Math.round(base * Math.min(1, Math.max(0.5, fxW * fxH / (1100 * 700))));
+    fxItems = [];
+    for (let i = 0; i < n; i++) {
+      const r = Math.random;
+      if (look.fx === 'stars') fxItems.push({ x: r() * fxW, y: r() * fxH, r: 0.5 + r() * 1.3, ph: r() * 6.28, sp: 0.5 + r() * 1.3 });
+      else if (look.fx === 'sakura') fxItems.push({ x: r() * fxW, y: r() * fxH, s: 5 + r() * 6, rot: r() * 6.28, vr: (r() - 0.5) * 1.6, vy: 20 + r() * 26, vx: -6 - r() * 10, ph: r() * 6.28, a: 0.5 + r() * 0.4 });
+      else fxItems.push({ x: r() * fxW, y: r() * fxH, len: 10 + r() * 14, vy: 420 + r() * 280, vx: -70, a: 0.25 + r() * 0.4 });
+    }
+    fxLast = 0; fxT = 0;
+    fxRaf = requestAnimationFrame(fxFrame);
+  } catch (e) { fxRaf = 0; }
+}
+function fxFrame(ts) {
+  fxRaf = requestAnimationFrame(fxFrame);
+  if (ts - fxLast < 33) return; // 约 30 帧，省电
+  const dt = fxLast ? Math.min((ts - fxLast) / 1000, 0.1) : 0.033;
+  fxLast = ts; fxT += dt;
+  const c = $('#fx'); if (!c) return;
+  const g = c.getContext('2d');
+  g.setTransform(fxDpr, 0, 0, fxDpr, 0, 0);
+  g.clearRect(0, 0, fxW, fxH);
+  const col = (getComputedStyle(document.body).getPropertyValue('--fx') || 'rgba(255,255,255,.8)').trim();
+  if (look.fx === 'stars') {
+    g.fillStyle = col;
+    for (const o of fxItems) {
+      g.globalAlpha = 0.2 + 0.8 * (0.5 + 0.5 * Math.sin(fxT * o.sp + o.ph));
+      g.beginPath(); g.arc(o.x, o.y, o.r, 0, 6.2832); g.fill();
+    }
+  } else if (look.fx === 'sakura') {
+    for (const o of fxItems) {
+      o.y += o.vy * dt; o.x += (o.vx + Math.sin(fxT + o.ph) * 14) * dt; o.rot += o.vr * dt;
+      if (o.y > fxH + 20) { o.y = -20; o.x = Math.random() * fxW; }
+      if (o.x < -20) o.x = fxW + 20;
+      g.save(); g.translate(o.x, o.y); g.rotate(o.rot); g.globalAlpha = o.a;
+      g.fillStyle = '#ffb7d0'; g.beginPath(); g.ellipse(0, 0, o.s, o.s * 0.55, 0, 0, 6.2832); g.fill();
+      g.fillStyle = '#ff8fb5'; g.beginPath(); g.ellipse(o.s * 0.25, 0, o.s * 0.45, o.s * 0.25, 0, 0, 6.2832); g.fill();
+      g.restore();
+    }
+  } else {
+    g.strokeStyle = col; g.lineWidth = 1; g.lineCap = 'round';
+    for (const o of fxItems) {
+      o.y += o.vy * dt; o.x += o.vx * dt;
+      if (o.y > fxH + 20) { o.y = -20; o.x = Math.random() * (fxW + 100); }
+      g.globalAlpha = o.a; g.beginPath(); g.moveTo(o.x, o.y); g.lineTo(o.x + o.vx / o.vy * o.len, o.y + o.len); g.stroke();
+    }
+  }
+  g.globalAlpha = 1;
+}
+function applyLook(persist) {
+  if (look.theme === 'auto') document.body.removeAttribute('data-theme'); else document.body.setAttribute('data-theme', look.theme);
+  if (persist) { try { localStorage.setItem(LOOK_KEY, JSON.stringify(look)); } catch (e) { /* ignore */ } }
+  fxStart();
+}
+function initLook() {
+  applyLook(false);
+  $('#themeSel').value = look.theme; $('#fxSel').value = look.fx;
+  $('#themeSel').onchange = () => { look.theme = $('#themeSel').value; applyLook(true); };
+  $('#fxSel').onchange = () => { look.fx = $('#fxSel').value; applyLook(true); };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) fxStop(); else fxStart(); });
+  window.addEventListener('resize', () => { clearTimeout(fxResizeT); fxResizeT = setTimeout(fxStart, 250); });
+}
+
 /* ---------- 云端同步（可选）：同一个 API key 的设备共享笔记 / 闪卡 / 题目 / 错题本 / 对话文字 ----------
    数据在浏览器里用 key 加密后才上传，云端（你自己的 Cloudflare Worker）只存密文。资料文件和图片不同步。
    设置里不填同步网址，就完全不会发出任何同步请求。 */
@@ -2222,6 +2339,7 @@ function openSettings() {
   $('#modelSel').value = known ? m : '__custom';
   $('#modelCustom').hidden = known; $('#modelCustom').value = known ? '' : m;
   $('#testResult').textContent = '';
+  $('#themeSel').value = look.theme; $('#fxSel').value = look.fx;
   $('#syncInput').value = S.settings.syncUrl || ''; $('#syncStatus').textContent = window._syncMsg || '';
   const d = $('#dlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', '');
 }
@@ -2339,6 +2457,7 @@ async function init() {
     DOMPurify.addHook('afterSanitizeAttributes', n => { if (n.tagName === 'A') { n.setAttribute('target', '_blank'); n.setAttribute('rel', 'noopener noreferrer'); } });
   }
   bindUI();
+  initLook();
   files = await idbAll();
   hist = await idbTx('hist', 'readonly', st => st.getAll()).then(r => r || []).catch(() => []);
   await importShared();
@@ -2362,5 +2481,212 @@ async function init() {
 }
 document.addEventListener('DOMContentLoaded', init);
 </script>
+<!-- ===== 小宠物：完全独立的附加模块。删掉从这里到「小宠物结束」的内容，系统恢复原样。 ===== -->
+<style id="pet-style">
+#petBox{position:fixed;right:16px;bottom:16px;z-index:30;width:88px;height:88px;pointer-events:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#petBox[hidden]{display:none!important}
+#petDog{pointer-events:auto;display:block;width:88px;height:88px;padding:0;margin:0;border:0;background:none;cursor:grab;touch-action:none;outline:none;font:inherit}
+#petDog:active{cursor:grabbing}
+#petDog:focus-visible{outline:2px dashed var(--accent,#17263f);outline-offset:2px;border-radius:16px}
+#petDog svg{width:100%;height:100%;overflow:visible;display:block;filter:drop-shadow(0 6px 8px rgba(0,0,0,.18))}
+.pet-jump{transform-origin:60px 112px}
+.pet-body{transform-origin:60px 112px;animation:petBreathe 3.4s ease-in-out infinite}
+.pet-head{transform-origin:60px 80px;animation:petHead 7s ease-in-out infinite}
+.pet-tail{transform-origin:84px 100px;animation:petWag 1.6s ease-in-out infinite}
+.pet-eyes{transform-origin:60px 46px;animation:petBlink 4.6s infinite}
+.pet-eye-happy,.pet-eye-sleep,.pet-tongue,.pet-zzz{display:none}
+#petBox.happy .pet-eye-open,#petBox.sleep .pet-eye-open{display:none}
+#petBox.happy .pet-eye-happy{display:inline}
+#petBox.happy .pet-tongue{display:inline}
+#petBox.happy .pet-tail{animation:petWag .28s ease-in-out infinite}
+#petBox.sleep .pet-eye-sleep{display:inline}
+#petBox.sleep .pet-tail{animation:none}
+#petBox.sleep .pet-body{animation-duration:6s}
+#petBox.sleep .pet-head{animation:petNod 6s ease-in-out infinite}
+#petBox.sleep .pet-zzz{display:block}
+#petBox.sleep .pet-zzz text{animation:petZ 3s ease-in-out infinite;opacity:0}
+#petBox.sleep .pet-zzz text:nth-child(2){animation-delay:1s}
+#petBox.sleep .pet-zzz text:nth-child(3){animation-delay:2s}
+#petBox.boing .pet-jump{animation:petBoing .5s cubic-bezier(.3,.7,.4,1)}
+#petBox.wake .pet-jump{animation:petStartle .45s ease-out}
+@keyframes petBreathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.015,1.03)}}
+@keyframes petHead{0%,40%,100%{transform:rotate(0)}48%{transform:rotate(-5deg)}56%{transform:rotate(-5deg)}64%{transform:rotate(0)}}
+@keyframes petNod{0%,100%{transform:rotate(0) translateY(0)}50%{transform:rotate(6deg) translateY(3px)}}
+@keyframes petWag{0%,100%{transform:rotate(-12deg)}50%{transform:rotate(20deg)}}
+@keyframes petBlink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+@keyframes petBoing{0%{transform:translateY(0) scale(1,1)}25%{transform:translateY(0) scale(1.08,.9)}55%{transform:translateY(-14px) scale(.96,1.06)}80%{transform:translateY(0) scale(1.05,.95)}100%{transform:translateY(0) scale(1,1)}}
+@keyframes petStartle{0%{transform:translateY(0)}30%{transform:translateY(-10px) rotate(-4deg)}60%{transform:translateY(0) rotate(3deg)}100%{transform:translateY(0) rotate(0)}}
+@keyframes petZ{0%{opacity:0;transform:translate(0,6px) scale(.7)}30%{opacity:.9}100%{opacity:0;transform:translate(8px,-14px) scale(1.1)}}
+.pet-heart{position:absolute;left:50%;top:18px;font-size:16px;line-height:1;color:#ff6b8a;pointer-events:none;will-change:transform,opacity;animation:petHeart 1.1s ease-out forwards}
+@keyframes petHeart{0%{opacity:0;transform:translate(-50%,6px) scale(.5)}15%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),-52px) scale(var(--sc,1)) rotate(var(--rot,0deg))}}
+.pet-say{position:absolute;right:62px;bottom:72px;white-space:nowrap;padding:5px 11px;border-radius:14px;font:600 13px/1.4 var(--sans,sans-serif);
+  background:var(--sheet,#fff);color:var(--ink,#17263f);box-shadow:0 0 0 1px var(--line,#d3dbe8),0 8px 18px -8px rgba(0,0,0,.35);
+  opacity:0;transform:translateY(4px) scale(.92);transform-origin:100% 100%;transition:opacity .2s,transform .2s;pointer-events:none}
+.pet-say::after{content:"";position:absolute;right:12px;bottom:-5px;width:9px;height:9px;background:inherit;transform:rotate(45deg);box-shadow:2px 2px 0 0 var(--line,#d3dbe8)}
+.pet-say.on{opacity:1;transform:none}
+.pet-x{position:absolute;right:-4px;top:-4px;width:22px;height:22px;padding:0;border-radius:50%;border:0;cursor:pointer;pointer-events:auto;
+  background:var(--sheet,#fff);color:var(--muted,#5d6b7c);box-shadow:0 0 0 1px var(--line,#d3dbe8);font:600 12px/22px var(--sans,sans-serif);text-align:center;opacity:0;transform:scale(.8);transition:opacity .2s,transform .2s}
+#petBox:hover .pet-x,#petBox.showx .pet-x,.pet-x:focus-visible{opacity:1;transform:none}
+#petBack{position:fixed;right:16px;bottom:16px;z-index:30;width:36px;height:36px;padding:0;border-radius:50%;border:0;cursor:pointer;font-size:18px;line-height:36px;text-align:center;
+  background:var(--sheet,#fff);box-shadow:0 0 0 1px var(--line,#d3dbe8),0 8px 18px -10px rgba(0,0,0,.4);opacity:.85}
+#petBack:hover{opacity:1}
+#petBack[hidden]{display:none!important}
+@media (max-width:640px){#petBox,#petDog{width:68px;height:68px}.pet-say{right:46px;bottom:56px;font-size:12px}}
+@media (prefers-reduced-motion:reduce){.pet-body,.pet-head,.pet-tail,.pet-eyes,#petBox.sleep .pet-zzz text{animation:none!important}#petBox.boing .pet-jump,#petBox.wake .pet-jump{animation:none}}
+@media print{#petBox,#petBack{display:none!important}}
+</style>
+
+<div id="petBox" class="no-print" hidden aria-label="小狗">
+  <div class="pet-say" id="petSay" role="status" aria-live="polite"></div>
+  <button id="petDog" type="button" aria-label="摸摸小狗（可以拖动）">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <ellipse cx="60" cy="113" rx="34" ry="5" fill="#000" opacity=".12"/>
+      <g class="pet-jump">
+        <g class="pet-tail"><path d="M82 100 C98 100 104 84 98 74" fill="none" stroke="#e0a766" stroke-width="9" stroke-linecap="round"/></g>
+        <g class="pet-body">
+          <ellipse cx="60" cy="90" rx="27" ry="23" fill="#f1c58b"/>
+          <ellipse cx="60" cy="96" rx="15" ry="15" fill="#fff3df"/>
+          <ellipse cx="47" cy="108" rx="9" ry="6" fill="#fff3df" stroke="#e0a766" stroke-width="1.5"/>
+          <ellipse cx="73" cy="108" rx="9" ry="6" fill="#fff3df" stroke="#e0a766" stroke-width="1.5"/>
+          <path d="M43 108 v-2 M47 108.5 v-2.5 M51 108 v-2 M69 108 v-2 M73 108.5 v-2.5 M77 108 v-2" stroke="#e0a766" stroke-width="1.2" stroke-linecap="round"/>
+        </g>
+        <g class="pet-head">
+          <ellipse cx="60" cy="52" rx="33" ry="29" fill="#f1c58b"/>
+          <ellipse cx="29" cy="58" rx="10" ry="19" fill="#c98e56" transform="rotate(14 29 58)"/>
+          <ellipse cx="91" cy="58" rx="10" ry="19" fill="#c98e56" transform="rotate(-14 91 58)"/>
+          <path d="M60 25 C54 31 54 40 60 44 C66 40 66 31 60 25Z" fill="#fff3df"/>
+          <ellipse cx="60" cy="63" rx="17" ry="13" fill="#fff3df"/>
+          <ellipse cx="38" cy="60" rx="6" ry="3.6" fill="#ff9eaa" opacity=".5"/>
+          <ellipse cx="82" cy="60" rx="6" ry="3.6" fill="#ff9eaa" opacity=".5"/>
+          <g class="pet-eyes">
+            <g class="pet-eye-open">
+              <circle cx="46" cy="47" r="4.4" fill="#3a2a22"/><circle cx="74" cy="47" r="4.4" fill="#3a2a22"/>
+              <circle cx="47.5" cy="45.4" r="1.5" fill="#fff"/><circle cx="75.5" cy="45.4" r="1.5" fill="#fff"/>
+            </g>
+            <g class="pet-eye-happy" fill="none" stroke="#3a2a22" stroke-width="3" stroke-linecap="round">
+              <path d="M40.5 48 q5.5 -7 11 0"/><path d="M68.5 48 q5.5 -7 11 0"/>
+            </g>
+            <g class="pet-eye-sleep" fill="none" stroke="#3a2a22" stroke-width="2.6" stroke-linecap="round">
+              <path d="M41 47 q5 4 10 0"/><path d="M69 47 q5 4 10 0"/>
+            </g>
+          </g>
+          <path class="pet-tongue" d="M54.5 66.5 q5.5 12 11 0 z" fill="#ff7f93"/>
+          <ellipse cx="60" cy="56.5" rx="5.2" ry="3.7" fill="#4a3328"/>
+          <ellipse cx="58.4" cy="55.3" rx="1.6" ry=".9" fill="#fff" opacity=".6"/>
+          <path d="M60 60 v4.5 M60 64.5 q-5 5 -10 1 M60 64.5 q5 5 10 1" fill="none" stroke="#4a3328" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        <g class="pet-zzz" font-family="sans-serif" font-weight="700" fill="#7b8fb5">
+          <text x="92" y="30" font-size="13">z</text><text x="98" y="20" font-size="10">z</text><text x="103" y="11" font-size="8">z</text>
+        </g>
+      </g>
+    </svg>
+  </button>
+  <button class="pet-x" id="petHide" type="button" aria-label="收起小狗" title="收起">✕</button>
+</div>
+<button id="petBack" type="button" hidden aria-label="把小狗叫回来" title="把小狗叫回来">🐶</button>
+
+<script>
+/* 小宠物：自成一体（IIFE + try/catch）。只读写自己的 localStorage 键 exam-pet，不读不改考前助手的任何数据、函数或元素。 */
+(function () {
+  try {
+    var KEY = 'exam-pet';
+    var box = document.getElementById('petBox'), dog = document.getElementById('petDog'),
+        say = document.getElementById('petSay'), hideBtn = document.getElementById('petHide'),
+        back = document.getElementById('petBack');
+    if (!box || !dog || !say || !hideBtn || !back) return;
+
+    var st = { r: 16, b: 16, hidden: false };
+    try { var o = JSON.parse(localStorage.getItem(KEY) || '{}'); if (typeof o.r === 'number') st.r = o.r; if (typeof o.b === 'number') st.b = o.b; st.hidden = !!o.hidden; } catch (e) {}
+    function persist() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
+
+    function size() { return box.offsetWidth || 88; }
+    function clamp() {
+      var s = size();
+      st.r = Math.min(Math.max(4, st.r), Math.max(4, window.innerWidth - s - 4));
+      st.b = Math.min(Math.max(4, st.b), Math.max(4, window.innerHeight - s - 4));
+    }
+    function place() { clamp(); box.style.right = st.r + 'px'; box.style.bottom = st.b + 'px'; back.style.right = '16px'; back.style.bottom = '16px'; }
+    function show() { box.hidden = st.hidden; back.hidden = !st.hidden; if (!st.hidden) place(); }
+    show();
+
+    var lines = ['汪！', '嘿嘿~', '再摸摸~', '好舒服…', '加油复习！', '汪汪！', '我陪着你~', '摸摸头，考试顺利', '你好棒！', '蹭蹭~'];
+    var hearts = ['♥', '♥', '♥', '♡', '✦'];
+    var sayT = 0, happyT = 0, sleepT = 0, lastLine = -1, xT = 0, hearting = 0;
+
+    function speak(txt) {
+      say.textContent = txt; say.classList.add('on');
+      clearTimeout(sayT); sayT = setTimeout(function () { say.classList.remove('on'); }, 1500);
+    }
+    function burst(n) {
+      for (var i = 0; i < n; i++) {
+        if (hearting > 10) return;
+        var h = document.createElement('span');
+        h.className = 'pet-heart'; h.textContent = hearts[(Math.random() * hearts.length) | 0];
+        h.style.setProperty('--dx', ((Math.random() - .5) * 50).toFixed(0) + 'px');
+        h.style.setProperty('--sc', (0.9 + Math.random() * 0.7).toFixed(2));
+        h.style.setProperty('--rot', ((Math.random() - .5) * 40).toFixed(0) + 'deg');
+        h.style.left = (38 + Math.random() * 24) + '%';
+        h.style.animationDelay = (i * 0.07) + 's';
+        hearting++;
+        box.appendChild(h);
+        (function (el) { var d = function () { if (el.parentNode) { el.remove(); hearting--; } }; el.addEventListener('animationend', d); setTimeout(d, 1800); })(h);
+      }
+    }
+    function restartAnim(cls) { box.classList.remove(cls); void box.offsetWidth; box.classList.add(cls); }
+
+    function sleepSoon() {
+      clearTimeout(sleepT);
+      sleepT = setTimeout(function () { if (!box.hidden && !document.hidden) { box.classList.remove('happy'); box.classList.add('sleep'); } }, 60000);
+    }
+    function wake() { if (box.classList.contains('sleep')) { box.classList.remove('sleep'); return true; } return false; }
+
+    function pet() {
+      var woke = wake();
+      if (woke) { restartAnim('wake'); speak('汪？！'); setTimeout(function () { box.classList.remove('wake'); }, 500); }
+      else {
+        box.classList.add('happy'); restartAnim('boing'); burst(2 + ((Math.random() * 2) | 0));
+        var i; do { i = (Math.random() * lines.length) | 0; } while (i === lastLine && lines.length > 1);
+        lastLine = i; speak(lines[i]);
+        clearTimeout(happyT); happyT = setTimeout(function () { box.classList.remove('happy', 'boing'); }, 1400);
+      }
+      sleepSoon();
+    }
+
+    /* 拖动 + 点击：移动不到 6px 算点击，否则算拖动 */
+    var drag = null;
+    dog.addEventListener('pointerdown', function (e) {
+      if (e.button !== undefined && e.button !== 0) return;
+      drag = { x: e.clientX, y: e.clientY, r: st.r, b: st.b, moved: false, id: e.pointerId };
+      try { dog.setPointerCapture(e.pointerId); } catch (x) {}
+    });
+    dog.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 6) return;
+      drag.moved = true; st.r = drag.r - dx; st.b = drag.b - dy; place();
+    });
+    function end(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var d = drag; drag = null;
+      try { dog.releasePointerCapture(e.pointerId); } catch (x) {}
+      if (d.moved) persist();
+      else if (e.type === 'pointerup') { pet(); box.classList.add('showx'); clearTimeout(xT); xT = setTimeout(function () { box.classList.remove('showx'); }, 2500); }
+    }
+    dog.addEventListener('pointerup', end);
+    dog.addEventListener('pointercancel', end);
+    dog.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pet(); } });
+    dog.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+    hideBtn.addEventListener('click', function () { st.hidden = true; persist(); show(); });
+    back.addEventListener('click', function () { st.hidden = false; persist(); show(); box.classList.remove('sleep'); pet(); });
+
+    /* 窗口变化时别跑出屏幕；页面里有操作就重新计时睡觉（只是被动监听，不拦截任何事件） */
+    window.addEventListener('resize', function () { if (!box.hidden) place(); });
+    ['pointerdown', 'keydown'].forEach(function (t) { document.addEventListener(t, function () { if (!box.classList.contains('sleep')) sleepSoon(); }, { passive: true, capture: true }); });
+    sleepSoon();
+  } catch (err) { /* 小狗出任何问题都不影响主系统 */ }
+})();
+</script>
+<!-- ===== 小宠物结束 ===== -->
 </body>
 </html>
