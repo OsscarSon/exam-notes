@@ -528,12 +528,21 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
       <option value="flowers">发光花丛（深色主题最好看）</option>
     </select>
     <p class="muted fine">背景氛围会多耗一点电；页面不在前台时自动暂停，系统开了「减少动画」时不显示。</p>
-    <label for="petSel">小宠物（小狗）</label>
-    <select id="petSel">
-      <option value="on">开启</option>
-      <option value="off">关闭</option>
-    </select>
-    <p class="muted fine">开启后右下角有只小狗，点它可以摸摸、也能拖动；关闭后完全不显示。</p>
+    <label for="petKind">小宠物</label>
+    <div class="inline">
+      <select id="petKind" style="flex:1;min-width:0">
+        <option value="dog">小狗</option>
+        <option value="cat">小猫</option>
+        <option value="rabbit">小兔</option>
+        <option value="panda">熊猫</option>
+        <option value="bear">小熊</option>
+      </select>
+      <select id="petSel" style="flex:1;min-width:0" aria-label="小宠物开关">
+        <option value="on">开启</option>
+        <option value="off">关闭</option>
+      </select>
+    </div>
+    <p class="muted fine">开启后右下角有只小宠物，点它可以摸摸、也能拖动；关闭后完全不显示。</p>
     <label>备份与恢复</label>
     <div class="inline"><button class="btn line" id="btnBackup" type="button">备份到文件</button><button class="btn line" id="btnImport" type="button">从文件导入</button></div>
     <input class="vh" type="file" id="importInput" accept=".json,application/json">
@@ -1189,16 +1198,28 @@ async function genNotes() {
     const ctx = await gatherContext(false, signal);
     const c = cfg();
     const detail = $('#noteDetail').value, focus = $('#noteFocus').value.trim();
-    const prompt = [
+    const prompt = focus ? [
+      '请根据我提供的资料，生成一份适合期末考试复习的【' + S.settings.subject + '】复习笔记。',
+      '【范围限定】这份笔记只写这个主题：「' + focus + '」。',
+      '范围要求：',
+      '- 在所有资料里找出和这个主题直接相关的内容（可能分散在不同文件里，包括公式、例题、图表）。',
+      '- 资料里属于其他章节、其他主题的内容一律不要写，也不要做全部章节的概述。',
+      '- 如果资料里完全找不到相关内容，只回答“资料未涉及「' + focus + '」”，不要改写成别的章节的笔记。',
+      '格式要求：',
+      '1. 按这个主题自己的知识点分层（## 知识点分组，### 具体知识点），不要按资料的整本章节目录组织。',
+      '2. ' + c.noteItem,
+      '3. ' + c.noteTail.replace('最重要的 10 到 15 条', '最重要的 5 到 10 条') + '（这些内容也只针对这个主题）',
+      '4. 详细程度：' + detail + '。',
+      '只写资料里有的内容，没有的不要补充。'
+    ].join('\n') : [
       '请根据我提供的资料，生成一份适合期末考试复习的【' + S.settings.subject + '】复习笔记。',
       '要求：',
       '1. 按资料的章节或知识模块组织，用 Markdown 标题分层（## 章节，### 知识点）。',
       '2. ' + c.noteItem,
       '3. ' + c.noteTail,
       '4. 详细程度：' + detail + '。',
-      focus ? '5. 重点覆盖：' + focus + '。' : '',
       '只写资料里有的内容，没有的不要补充。'
-    ].filter(Boolean).join('\n');
+    ].join('\n');
     const r = await callGemini({ system: systemPrompt(), contents: [{ role: 'user', parts: ctx.parts.concat([{ text: prompt }]) }], signal: signal });
     pushHist('notes');
     S.notes = r.text;
@@ -1215,13 +1236,13 @@ async function genCards() {
     const prompt = [
       '请根据资料生成 ' + n + ' 张复习闪卡。',
       cfg().cardHint,
-      focus ? '只围绕这些章节或主题出卡：' + focus + '。不要出其他章节的内容，不要重复。' : '覆盖资料的主要知识点，由浅入深，不要重复。',
+      focus ? '【范围限定】只出这个主题的闪卡：「' + focus + '」。在所有资料里找出和它直接相关的内容（可能分散在不同文件）；其他章节、其他主题一律不要出卡。相关内容不够 ' + n + ' 张时，宁可少出几张，也不要拿别的章节凑数，不要重复。如果资料里完全找不到相关内容，只回答“资料未涉及「' + focus + '」”，不要输出卡片。' : '覆盖资料的主要知识点，由浅入深，不要重复。',
       '严格按下面的格式输出，不要输出其他文字，不要使用代码块：',
       '@@CARD', 'Q: 问题', 'A: 答案', '@@END'
     ].join('\n');
     const r = await callGemini({ system: systemPrompt(), contents: [{ role: 'user', parts: ctx.parts.concat([{ text: prompt }]) }], signal: signal });
     const cards = parseCards(r.text);
-    if (!cards.length) throw new AppError('没能从回复里解析出闪卡，请再点一次「生成闪卡」。');
+    if (!cards.length) throw new AppError(focus && /资料未涉及/.test(r.text) ? '资料里找不到「' + focus + '」相关的内容。请检查主题的写法，或在上面的「范围」里勾选对应的资料。' : '没能从回复里解析出闪卡，请再点一次「生成闪卡」。');
     pushHist('cards');
     S.cards = cards; cardPos = 0; cardShown = false; cardFilter = 'all'; save(); renderCards();
   });
@@ -1254,10 +1275,10 @@ async function genQuiz() {
     const n = $('#quizCount').value, type = $('#quizType').value, diff = $('#quizDiff').value, focus = $('#quizFocus').value.trim();
     const sa = cfg().shortAsk;
     const typeText = type === '混合' ? '选择题和' + sa + '混合（约六成选择题）' : (type === '只出选择题' ? '只出选择题' : '只出' + sa);
-    const prompt = ['请根据资料出 ' + n + ' 道【' + S.settings.subject + '】模拟题。题型：' + typeText + '。难度：' + diff + '。题目必须能依据资料作答，' + (focus ? '只考这些章节或主题：' + focus + '，不要考其他章节。' : '覆盖不同章节。'), quizFormat()].join('\n');
+    const prompt = ['请根据资料出 ' + n + ' 道【' + S.settings.subject + '】模拟题。题型：' + typeText + '。难度：' + diff + '。题目必须能依据资料作答。' + (focus ? '\n【范围限定】只考这个主题：「' + focus + '」。在所有资料里找出和它直接相关的内容（可能分散在不同文件）；其他章节、其他主题一律不要考，宁可少出几道，也不要拿别的章节凑数。如果资料里完全找不到相关内容，只回答“资料未涉及「' + focus + '」”，不要出题。' : '覆盖不同章节。'), quizFormat()].join('\n');
     const r = await callGemini({ system: systemPrompt(), contents: [{ role: 'user', parts: ctx.parts.concat([{ text: prompt }]) }], signal: signal });
     const list = parseQuiz(r.text);
-    if (!list.length) throw new AppError('没能从回复里解析出题目，请再点一次「生成模拟题」。');
+    if (!list.length) throw new AppError(focus && /资料未涉及/.test(r.text) ? '资料里找不到「' + focus + '」相关的内容。请检查主题的写法，或在上面的「范围」里勾选对应的资料。' : '没能从回复里解析出题目，请再点一次「生成模拟题」。');
     loadQuiz(list);
   });
 }
@@ -1426,15 +1447,19 @@ function renderScope(kind) {
   box.hidden = false;
   const key = kind + '|' + S.settings.subject, cur = scopeSel[key];
   const chosen = new Set(cur ? mine.filter(f => cur.has(f.id)).map(f => f.id) : mine.map(f => f.id));
-  const apply = () => {
+  const sumText = () => chosen.size === mine.length ? '范围：全部 ' + mine.length + ' 份资料' : '范围：已选 ' + chosen.size + ' / ' + mine.length + ' 份资料'; // 两种都只占一行，勾选时高度不变
+  const boxes = [];
+  const apply = () => { // 只更新数据、摘要和勾选状态，不重画，所以不会跳动
     if (chosen.size === mine.length) delete scopeSel[key]; else scopeSel[key] = new Set(chosen);
-    renderScope(kind);
+    sm.textContent = sumText();
+    boxes.forEach(x => { x.cb.checked = chosen.has(x.id); });
   };
   const det = document.createElement('details'); det.className = 'scope-box'; det.open = !!scopeOpen[kind];
   det.addEventListener('toggle', () => { scopeOpen[kind] = det.open; });
   const sm = document.createElement('summary');
-  sm.textContent = chosen.size === mine.length ? '范围：全部 ' + mine.length + ' 份资料（点开可只选其中几份）' : '范围：已选 ' + chosen.size + ' / ' + mine.length + ' 份资料';
+  sm.textContent = sumText();
   det.appendChild(sm);
+  const tip = document.createElement('p'); tip.className = 'muted fine'; tip.style.margin = '8px 0 0'; tip.textContent = '只想用其中几份时，在下面勾选就行。'; det.appendChild(tip);
   const row = document.createElement('div'); row.className = 'sbtns';
   [['全选', () => { mine.forEach(f => chosen.add(f.id)); apply(); }], ['全不选', () => { chosen.clear(); apply(); }]].forEach(p => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small line'; b.textContent = p[0]; b.onclick = p[1]; row.appendChild(b);
@@ -1446,6 +1471,7 @@ function renderScope(kind) {
     const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = chosen.has(f.id);
     cb.onchange = () => { if (cb.checked) chosen.add(f.id); else chosen.delete(f.id); apply(); };
     const nm = document.createElement('span'); nm.className = 'fname'; nm.textContent = f.name;
+    boxes.push({ id: f.id, cb: cb });
     lb.appendChild(cb); lb.appendChild(nm); li.appendChild(lb); ul.appendChild(li);
   });
   det.appendChild(ul);
@@ -3157,54 +3183,14 @@ body.mm-lock{overflow:hidden}
 @media print{#petBox,#petBack{display:none!important}}
 </style>
 
-<div id="petBox" class="no-print" hidden aria-label="小狗">
+<div id="petBox" class="no-print" hidden aria-label="小宠物">
   <div class="pet-say" id="petSay" role="status" aria-live="polite"></div>
-  <button id="petDog" type="button" aria-label="摸摸小狗（可以拖动）">
-    <svg viewBox="0 0 120 120" aria-hidden="true">
-      <ellipse cx="60" cy="113" rx="34" ry="5" fill="#000" opacity=".12"/>
-      <g class="pet-jump">
-        <g class="pet-tail"><path d="M82 100 C98 100 104 84 98 74" fill="none" stroke="#e0a766" stroke-width="9" stroke-linecap="round"/></g>
-        <g class="pet-body">
-          <ellipse cx="60" cy="90" rx="27" ry="23" fill="#f1c58b"/>
-          <ellipse cx="60" cy="96" rx="15" ry="15" fill="#fff3df"/>
-          <ellipse cx="47" cy="108" rx="9" ry="6" fill="#fff3df" stroke="#e0a766" stroke-width="1.5"/>
-          <ellipse cx="73" cy="108" rx="9" ry="6" fill="#fff3df" stroke="#e0a766" stroke-width="1.5"/>
-          <path d="M43 108 v-2 M47 108.5 v-2.5 M51 108 v-2 M69 108 v-2 M73 108.5 v-2.5 M77 108 v-2" stroke="#e0a766" stroke-width="1.2" stroke-linecap="round"/>
-        </g>
-        <g class="pet-head">
-          <ellipse cx="60" cy="52" rx="33" ry="29" fill="#f1c58b"/>
-          <ellipse cx="29" cy="58" rx="10" ry="19" fill="#c98e56" transform="rotate(14 29 58)"/>
-          <ellipse cx="91" cy="58" rx="10" ry="19" fill="#c98e56" transform="rotate(-14 91 58)"/>
-          <path d="M60 25 C54 31 54 40 60 44 C66 40 66 31 60 25Z" fill="#fff3df"/>
-          <ellipse cx="60" cy="63" rx="17" ry="13" fill="#fff3df"/>
-          <ellipse cx="38" cy="60" rx="6" ry="3.6" fill="#ff9eaa" opacity=".5"/>
-          <ellipse cx="82" cy="60" rx="6" ry="3.6" fill="#ff9eaa" opacity=".5"/>
-          <g class="pet-eyes">
-            <g class="pet-eye-open">
-              <circle cx="46" cy="47" r="4.4" fill="#3a2a22"/><circle cx="74" cy="47" r="4.4" fill="#3a2a22"/>
-              <circle cx="47.5" cy="45.4" r="1.5" fill="#fff"/><circle cx="75.5" cy="45.4" r="1.5" fill="#fff"/>
-            </g>
-            <g class="pet-eye-happy" fill="none" stroke="#3a2a22" stroke-width="3" stroke-linecap="round">
-              <path d="M40.5 48 q5.5 -7 11 0"/><path d="M68.5 48 q5.5 -7 11 0"/>
-            </g>
-            <g class="pet-eye-sleep" fill="none" stroke="#3a2a22" stroke-width="2.6" stroke-linecap="round">
-              <path d="M41 47 q5 4 10 0"/><path d="M69 47 q5 4 10 0"/>
-            </g>
-          </g>
-          <path class="pet-tongue" d="M54.5 66.5 q5.5 12 11 0 z" fill="#ff7f93"/>
-          <ellipse cx="60" cy="56.5" rx="5.2" ry="3.7" fill="#4a3328"/>
-          <ellipse cx="58.4" cy="55.3" rx="1.6" ry=".9" fill="#fff" opacity=".6"/>
-          <path d="M60 60 v4.5 M60 64.5 q-5 5 -10 1 M60 64.5 q5 5 10 1" fill="none" stroke="#4a3328" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </g>
-        <g class="pet-zzz" font-family="sans-serif" font-weight="700" fill="#7b8fb5">
-          <text x="92" y="30" font-size="13">z</text><text x="98" y="20" font-size="10">z</text><text x="103" y="11" font-size="8">z</text>
-        </g>
-      </g>
-    </svg>
+  <button id="petDog" type="button" aria-label="摸摸小宠物（可以拖动）">
+    <svg id="petSvg" viewBox="0 0 120 120" aria-hidden="true"></svg>
   </button>
-  <button class="pet-x" id="petHide" type="button" aria-label="收起小狗" title="收起">✕</button>
+  <button class="pet-x" id="petHide" type="button" aria-label="收起小宠物" title="收起">✕</button>
 </div>
-<button id="petBack" type="button" hidden aria-label="把小狗叫回来" title="把小狗叫回来">🐶</button>
+<button id="petBack" type="button" hidden aria-label="把小宠物叫回来" title="把小宠物叫回来">🐶</button>
 
 <script>
 /* 小宠物：自成一体（IIFE + try/catch）。只读写自己的 localStorage 键 exam-pet，不读不改考前助手的任何数据、函数或元素。 */
@@ -3216,8 +3202,74 @@ body.mm-lock{overflow:hidden}
         back = document.getElementById('petBack');
     if (!box || !dog || !say || !hideBtn || !back) return;
 
-    var st = { r: 16, b: 16, hidden: false, on: true };
-    try { var o = JSON.parse(localStorage.getItem(KEY) || '{}'); if (typeof o.r === 'number') st.r = o.r; if (typeof o.b === 'number') st.b = o.b; st.hidden = !!o.hidden; if (o.on === false) st.on = false; } catch (e) {}
+
+    /* ---------- 造型：每种都用同一套动作（呼吸 / 眨眼 / 摇尾巴 / 睡觉），只是长相不同 ---------- */
+    function eyesG(o) {
+      return '<g class="pet-eyes"><g class="pet-eye-open">' + o.open + '</g>' +
+        '<g class="pet-eye-happy" fill="none" stroke="' + o.ink + '" stroke-width="3" stroke-linecap="round"><path d="M40.5 48 q5.5 -7 11 0"/><path d="M68.5 48 q5.5 -7 11 0"/></g>' +
+        '<g class="pet-eye-sleep" fill="none" stroke="' + o.ink + '" stroke-width="2.6" stroke-linecap="round"><path d="M41 47 q5 4 10 0"/><path d="M69 47 q5 4 10 0"/></g></g>';
+    }
+    var DARK_EYE = '<circle cx="46" cy="47" r="4.4" fill="#3a2a22"/><circle cx="74" cy="47" r="4.4" fill="#3a2a22"/><circle cx="47.5" cy="45.4" r="1.5" fill="#fff"/><circle cx="75.5" cy="45.4" r="1.5" fill="#fff"/>';
+    var BLUSH = function (y, c, o) { return '<ellipse cx="38" cy="' + y + '" rx="6" ry="3.6" fill="' + c + '" opacity="' + o + '"/><ellipse cx="82" cy="' + y + '" rx="6" ry="3.6" fill="' + c + '" opacity="' + o + '"/>'; };
+    var ZZZ = '<g class="pet-zzz" font-family="sans-serif" font-weight="700" fill="#7b8fb5"><text x="92" y="30" font-size="13">z</text><text x="98" y="20" font-size="10">z</text><text x="103" y="11" font-size="8">z</text></g>';
+    var PAWS = function (fill, stroke) { return '<ellipse cx="47" cy="108" rx="9" ry="6" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/><ellipse cx="73" cy="108" rx="9" ry="6" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>'; };
+    var DOG_MOUTH = function (c) { return '<path d="M60 60 v4.5 M60 64.5 q-5 5 -10 1 M60 64.5 q5 5 10 1" fill="none" stroke="' + c + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'; };
+    var KINDS = {
+      dog: { name: '小狗', emoji: '🐶', say: ['汪！', '汪汪！'], build: function () { return {
+        tail: '<path d="M82 100 C98 100 104 84 98 74" fill="none" stroke="#e0a766" stroke-width="9" stroke-linecap="round"/>',
+        body: '<ellipse cx="60" cy="90" rx="27" ry="23" fill="#f1c58b"/><ellipse cx="60" cy="96" rx="15" ry="15" fill="#fff3df"/>' + PAWS('#fff3df', '#e0a766') +
+          '<path d="M43 108 v-2 M47 108.5 v-2.5 M51 108 v-2 M69 108 v-2 M73 108.5 v-2.5 M77 108 v-2" stroke="#e0a766" stroke-width="1.2" stroke-linecap="round"/>',
+        back: '',
+        head: '<ellipse cx="60" cy="52" rx="33" ry="29" fill="#f1c58b"/><ellipse cx="29" cy="58" rx="10" ry="19" fill="#c98e56" transform="rotate(14 29 58)"/><ellipse cx="91" cy="58" rx="10" ry="19" fill="#c98e56" transform="rotate(-14 91 58)"/>' +
+          '<path d="M60 25 C54 31 54 40 60 44 C66 40 66 31 60 25Z" fill="#fff3df"/><ellipse cx="60" cy="63" rx="17" ry="13" fill="#fff3df"/>' + BLUSH(60, '#ff9eaa', .5),
+        face: eyesG({ open: DARK_EYE, ink: '#3a2a22' }) + '<path class="pet-tongue" d="M54.5 66.5 q5.5 12 11 0 z" fill="#ff7f93"/><ellipse cx="60" cy="56.5" rx="5.2" ry="3.7" fill="#4a3328"/><ellipse cx="58.4" cy="55.3" rx="1.6" ry=".9" fill="#fff" opacity=".6"/>' + DOG_MOUTH('#4a3328')
+      }; } },
+      cat: { name: '小猫', emoji: '🐱', say: ['喵~', '喵呜~', '呼噜呼噜~'], build: function () { return {
+        tail: '<path d="M82 102 C106 104 110 80 98 64" fill="none" stroke="#f0a95a" stroke-width="9" stroke-linecap="round"/>',
+        body: '<ellipse cx="60" cy="90" rx="27" ry="23" fill="#f4b46b"/><ellipse cx="60" cy="96" rx="15" ry="15" fill="#fff0dc"/>' + PAWS('#fff0dc', '#d9893a') +
+          '<path d="M36 84 q6 2 8 8 M84 84 q-6 2 -8 8" fill="none" stroke="#d9893a" stroke-width="3" stroke-linecap="round"/>',
+        back: '<path d="M31 40 L35 11 L57 28 Z" fill="#f4b46b"/><path d="M37 34 L39 20 L50 29 Z" fill="#f6a9b6"/><path d="M89 40 L85 11 L63 28 Z" fill="#f4b46b"/><path d="M83 34 L81 20 L70 29 Z" fill="#f6a9b6"/>',
+        head: '<ellipse cx="60" cy="52" rx="34" ry="28" fill="#f4b46b"/><path d="M52 27 q2 6 0 11 M60 24 v13 M68 27 q-2 6 0 11" fill="none" stroke="#d9893a" stroke-width="3" stroke-linecap="round"/>' +
+          '<ellipse cx="60" cy="63" rx="13" ry="9.5" fill="#fff0dc"/>' + BLUSH(60, '#ff9eaa', .5),
+        face: eyesG({ open: DARK_EYE.replace(/r="4.4"/g, 'r="4.8"'), ink: '#3a2a22' }) + '<path class="pet-tongue" d="M56 64.5 q4 8 8 0 z" fill="#ff7f93"/><path d="M56.6 55.5 h6.8 l-3.4 4.2 z" fill="#f08a9c"/>' +
+          '<path d="M60 59.8 v2.4 M60 62.2 q-4 4 -8 1 M60 62.2 q4 4 8 1" fill="none" stroke="#7a4a2a" stroke-width="1.8" stroke-linecap="round"/>' +
+          '<path d="M44 61 L22 56 M44 65 L22 67 M76 61 L98 56 M76 65 L98 67" fill="none" stroke="#a47a52" stroke-width="1.4" stroke-linecap="round" opacity=".85"/>'
+      }; } },
+      rabbit: { name: '小兔', emoji: '🐰', say: ['噗噗~', '蹦蹦~'], build: function () { var st = '#e8d6c8'; return {
+        tail: '<circle cx="88" cy="102" r="7" fill="#fff" stroke="' + st + '" stroke-width="1.5"/>',
+        body: '<ellipse cx="60" cy="90" rx="27" ry="23" fill="#fffaf6" stroke="' + st + '" stroke-width="1.5"/><ellipse cx="60" cy="96" rx="15" ry="15" fill="#ffe9ee"/>' + PAWS('#fffaf6', st),
+        back: '<ellipse cx="42" cy="18" rx="9" ry="21" transform="rotate(-8 42 18)" fill="#fffaf6" stroke="' + st + '" stroke-width="1.5"/><ellipse cx="42.5" cy="20" rx="4.5" ry="14" transform="rotate(-8 42 18)" fill="#ffc6d2"/>' +
+          '<ellipse cx="78" cy="18" rx="9" ry="21" transform="rotate(8 78 18)" fill="#fffaf6" stroke="' + st + '" stroke-width="1.5"/><ellipse cx="77.5" cy="20" rx="4.5" ry="14" transform="rotate(8 78 18)" fill="#ffc6d2"/>',
+        head: '<ellipse cx="60" cy="52" rx="32" ry="28" fill="#fffaf6" stroke="' + st + '" stroke-width="1.5"/>' + BLUSH(60, '#ffa8b8', .55),
+        face: eyesG({ open: DARK_EYE, ink: '#3a2a22' }) + '<ellipse cx="60" cy="56" rx="3.6" ry="2.6" fill="#f2a0b2"/><path d="M60 58.6 v3 M60 61.6 q-4 4 -8 .6 M60 61.6 q4 4 8 .6" fill="none" stroke="#b88080" stroke-width="1.8" stroke-linecap="round"/>' +
+          '<path class="pet-tongue" d="M56 69 q4 7 8 0 z" fill="#ff7f93"/><rect x="57.4" y="62.6" width="5.2" height="5.6" rx="1.4" fill="#fff" stroke="#e3cfc4" stroke-width="1"/>'
+      }; } },
+      panda: { name: '熊猫', emoji: '🐼', say: ['嗷呜~', '啃竹子中…'], build: function () { var bk = '#2b2b33', st = '#d9dbe3'; return {
+        tail: '<circle cx="88" cy="102" r="6.5" fill="#fff" stroke="' + st + '" stroke-width="1.5"/>',
+        body: '<ellipse cx="60" cy="90" rx="27" ry="23" fill="#fff" stroke="' + st + '" stroke-width="1.5"/><ellipse cx="36" cy="88" rx="8" ry="14" transform="rotate(20 36 88)" fill="' + bk + '"/><ellipse cx="84" cy="88" rx="8" ry="14" transform="rotate(-20 84 88)" fill="' + bk + '"/>' +
+          '<ellipse cx="47" cy="108" rx="9" ry="6" fill="' + bk + '"/><ellipse cx="73" cy="108" rx="9" ry="6" fill="' + bk + '"/>',
+        back: '<circle cx="31" cy="30" r="11" fill="' + bk + '"/><circle cx="89" cy="30" r="11" fill="' + bk + '"/>',
+        head: '<ellipse cx="60" cy="52" rx="33" ry="29" fill="#fff" stroke="' + st + '" stroke-width="1.5"/><ellipse cx="46" cy="49" rx="8.5" ry="10.5" transform="rotate(20 46 49)" fill="' + bk + '"/><ellipse cx="74" cy="49" rx="8.5" ry="10.5" transform="rotate(-20 74 49)" fill="' + bk + '"/>' + BLUSH(63, '#ffb3c1', .6).replace('cx="38"', 'cx="33"').replace('cx="82"', 'cx="87"'),
+        face: eyesG({ open: '<circle cx="46" cy="47" r="4.2" fill="#fff"/><circle cx="74" cy="47" r="4.2" fill="#fff"/><circle cx="46.4" cy="47.4" r="2.6" fill="' + bk + '"/><circle cx="74.4" cy="47.4" r="2.6" fill="' + bk + '"/><circle cx="47.2" cy="46.4" r=".9" fill="#fff"/><circle cx="75.2" cy="46.4" r=".9" fill="#fff"/>', ink: '#fff' }) +
+          '<path class="pet-tongue" d="M55 66 q5 10 10 0 z" fill="#ff7f93"/><ellipse cx="60" cy="57" rx="5" ry="3.4" fill="' + bk + '"/><ellipse cx="58.6" cy="56" rx="1.5" ry=".8" fill="#fff" opacity=".5"/>' +
+          '<path d="M60 60.4 v3 M60 63.4 q-4 4 -8 1 M60 63.4 q4 4 8 1" fill="none" stroke="' + bk + '" stroke-width="2" stroke-linecap="round"/>'
+      }; } },
+      bear: { name: '小熊', emoji: '🐻', say: ['嗷~', '抱抱~'], build: function () { return {
+        tail: '<circle cx="88" cy="103" r="6" fill="#b87a45"/>',
+        body: '<ellipse cx="60" cy="90" rx="27" ry="23" fill="#c98e56"/><ellipse cx="60" cy="96" rx="15" ry="15" fill="#f3d9b8"/>' + PAWS('#f3d9b8', '#a8693a'),
+        back: '<circle cx="31" cy="30" r="10.5" fill="#b87a45"/><circle cx="31" cy="30" r="5.5" fill="#e8bd90"/><circle cx="89" cy="30" r="10.5" fill="#b87a45"/><circle cx="89" cy="30" r="5.5" fill="#e8bd90"/>',
+        head: '<ellipse cx="60" cy="52" rx="33" ry="29" fill="#c98e56"/><ellipse cx="60" cy="63" rx="15" ry="11.5" fill="#f3d9b8"/>' + BLUSH(60, '#ff9eaa', .45),
+        face: eyesG({ open: DARK_EYE, ink: '#3a2a22' }) + '<path class="pet-tongue" d="M55 66 q5 10 10 0 z" fill="#ff7f93"/><ellipse cx="60" cy="57" rx="5" ry="3.6" fill="#4a3328"/><ellipse cx="58.4" cy="55.9" rx="1.5" ry=".8" fill="#fff" opacity=".55"/>' + DOG_MOUTH('#4a3328').replace('M60 60 v4.5', 'M60 60.6 v3.9')
+      }; } }
+    };
+    function buildSvg(kind) {
+      var k = KINDS[kind] || KINDS.dog, o = k.build();
+      return '<ellipse cx="60" cy="113" rx="34" ry="5" fill="#000" opacity=".12"/><g class="pet-jump"><g class="pet-tail">' + o.tail + '</g><g class="pet-body">' + o.body + '</g><g class="pet-head">' + o.back + o.head + o.face + '</g>' + ZZZ + '</g>';
+    }
+
+    var st = { r: 16, b: 16, hidden: false, on: true, kind: 'dog' };
+    var svgEl = document.getElementById('petSvg');
+    try { var o = JSON.parse(localStorage.getItem(KEY) || '{}'); if (typeof o.r === 'number') st.r = o.r; if (typeof o.b === 'number') st.b = o.b; st.hidden = !!o.hidden; if (o.on === false) st.on = false; if (typeof o.kind === 'string' && KINDS[o.kind]) st.kind = o.kind; } catch (e) {}
     function persist() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
 
     function size() { return box.offsetWidth || 88; }
@@ -3228,11 +3280,17 @@ body.mm-lock{overflow:hidden}
     }
     function place() { clamp(); box.style.right = st.r + 'px'; box.style.bottom = st.b + 'px'; back.style.right = '16px'; back.style.bottom = '16px'; }
     var sel = document.getElementById('petSel');
-    function show() { box.hidden = !st.on || st.hidden; back.hidden = !st.on || !st.hidden; if (sel) sel.value = st.on ? 'on' : 'off'; if (!box.hidden) place(); }
+    var kindSel = document.getElementById('petKind');
+    function skin() { setLines(); svgEl.innerHTML = buildSvg(st.kind); back.textContent = KINDS[st.kind].emoji; if (kindSel) kindSel.value = st.kind; }
+    function show() { box.hidden = !st.on || st.hidden; back.hidden = !st.on || !st.hidden; if (sel) sel.value = st.on ? 'on' : 'off'; skin(); if (!box.hidden) place(); }
     show();
     if (sel) sel.addEventListener('change', function () { st.on = sel.value !== 'off'; if (st.on) st.hidden = false; persist(); show(); });
+    if (kindSel) kindSel.addEventListener('change', function () { if (KINDS[kindSel.value]) { st.kind = kindSel.value; persist(); skin(); if (st.on && !st.hidden) { box.classList.remove('sleep'); pet(); } } });
 
-    var lines = ['汪！', '嘿嘿~', '再摸摸~', '好舒服…', '加油复习！', '汪汪！', '我陪着你~', '摸摸头，考试顺利', '你好棒！', '蹭蹭~'];
+    var COMMON = ['嘿嘿~', '再摸摸~', '好舒服…', '加油复习！', '我陪着你~', '摸摸头，考试顺利', '你好棒！', '蹭蹭~'];
+    var lines = COMMON.slice();
+    function setLines() { lines = KINDS[st.kind].say.concat(KINDS[st.kind].say, COMMON); }
+    setLines();
     var hearts = ['♥', '♥', '♥', '♡', '✦'];
     var sayT = 0, happyT = 0, sleepT = 0, lastLine = -1, xT = 0, hearting = 0;
 
