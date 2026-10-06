@@ -464,6 +464,9 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
         <label>难度
           <select id="quizDiff"><option>基础</option><option selected>中等</option><option>拔高</option></select>
         </label>
+        <label>出题方式
+          <select id="quizStyle"><option selected>变式新题</option><option>贴近资料原题</option></select>
+        </label>
         <label class="grow">重点章节或主题（可不填）
           <input id="quizFocus" type="text" placeholder="例如：第 24、25 章 定积分">
         </label>
@@ -1272,10 +1275,10 @@ async function genQuiz() {
   if (!(await ensureRoom('quiz'))) return;
   run('quiz', '正在出题', async (signal) => {
     const ctx = await gatherContext(false, signal, scopeIds('quiz'));
-    const n = $('#quizCount').value, type = $('#quizType').value, diff = $('#quizDiff').value, focus = $('#quizFocus').value.trim();
+    const n = $('#quizCount').value, type = $('#quizType').value, diff = $('#quizDiff').value, focus = $('#quizFocus').value.trim(), style = $('#quizStyle').value;
     const sa = cfg().shortAsk;
     const typeText = type === '混合' ? '选择题和' + sa + '混合（约六成选择题）' : (type === '只出选择题' ? '只出选择题' : '只出' + sa);
-    const prompt = ['请根据资料出 ' + n + ' 道【' + S.settings.subject + '】模拟题。题型：' + typeText + '。难度：' + diff + '。题目必须能依据资料作答。' + (focus ? '\n【范围限定】只考这个主题：「' + focus + '」。在所有资料里找出和它直接相关的内容（可能分散在不同文件）；其他章节、其他主题一律不要考，宁可少出几道，也不要拿别的章节凑数。如果资料里完全找不到相关内容，只回答“资料未涉及「' + focus + '」”，不要出题。' : '覆盖不同章节。'), quizFormat()].join('\n');
+    const prompt = ['请根据资料出 ' + n + ' 道【' + S.settings.subject + '】模拟题。题型：' + typeText + '。难度：' + diff + '。' + (style === '变式新题' ? '【出题方式：变式新题】先从资料里提炼知识点、公式、方法和典型题型，再自己设计全新的题目：换数字、换情境、换设问角度、换条件，或把几个知识点综合起来考。不要照抄、改写或直接搬用资料里已有的例题、习题和原句；每道题考的知识点和方法必须来自资料，做题所需的知识都能在资料里找到依据，但题目本身要是新的。' : '题目必须能依据资料作答，可以贴近资料里的例题和习题。') + (focus ? '\n【范围限定】只考这个主题：「' + focus + '」。在所有资料里找出和它直接相关的内容（可能分散在不同文件）；其他章节、其他主题一律不要考，宁可少出几道，也不要拿别的章节凑数。如果资料里完全找不到相关内容，只回答“资料未涉及「' + focus + '」”，不要出题。' : '覆盖不同章节。'), quizFormat()].join('\n');
     const r = await callGemini({ system: systemPrompt(), contents: [{ role: 'user', parts: ctx.parts.concat([{ text: prompt }]) }], signal: signal });
     const list = parseQuiz(r.text);
     if (!list.length) throw new AppError(focus && /资料未涉及/.test(r.text) ? '资料里找不到「' + focus + '」相关的内容。请检查主题的写法，或在上面的「范围」里勾选对应的资料。' : '没能从回复里解析出题目，请再点一次「生成模拟题」。');
@@ -1287,7 +1290,7 @@ async function genVariants() {
   if (!(await ensureRoom('quiz'))) return;
   run('quiz', '正在按错题出变式题', async (signal) => {
     const ctx = await gatherContext(true, signal);
-    const items = S.wrong.slice(-10);
+    const items = S.wrong.slice(-20);
     const imgParts = [];
     for (let i = 0; i < items.length; i++) {
       const w = items[i];
@@ -2307,7 +2310,7 @@ function syncApply(rem, loud) {
 }
 
 /* ---------- 历史版本：笔记 / 闪卡 / 模拟题，每类每学科保留最近 10 版（存在 IndexedDB） ---------- */
-const HIST_MAX = 10;
+const HIST_MAX = 30;
 const KIND_NAME = { notes: '笔记', cards: '闪卡', quiz: '模拟题' };
 let hist = [];
 const histPut = r => idbTx('hist', 'readwrite', st => st.put(r)).catch(() => {});
