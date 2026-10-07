@@ -123,6 +123,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .subjects button.add{border:1.5px dashed var(--line);background:transparent;color:var(--muted);box-shadow:none;font-weight:600}
 .subjects button.add:hover:not(:disabled){background:var(--glass);color:var(--ink)}
 .subjects .cnt{font-style:normal;font-size:12px;font-weight:600;min-width:20px;padding:0 6px;border-radius:999px;background:rgba(127,140,160,.22);line-height:20px;text-align:center}
+.pastlab{font-size:12.5px;color:var(--muted,inherit);white-space:nowrap;display:inline-flex;align-items:center;gap:4px;cursor:pointer}
 .tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 12px}
 .tabs::-webkit-scrollbar{display:none}
 .tab{
@@ -351,6 +352,7 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
     <button class="tab" role="tab" data-tab="mindmap" aria-selected="false">导图</button>
     <button class="tab" role="tab" data-tab="cards" aria-selected="false">闪卡</button>
     <button class="tab" role="tab" data-tab="quiz" aria-selected="false">刷题</button>
+    <button class="tab" role="tab" data-tab="exam" aria-selected="false">模拟卷</button>
     <button class="tab" role="tab" data-tab="chat" aria-selected="false">问答</button>
   </nav>
 
@@ -478,6 +480,33 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
       <div id="wrongArea"></div>
       <div class="bar no-print histbar" id="hb-quiz"></div>
       <p class="muted fine no-print">题目和答案都由 AI 生成，重要的答案请自己再核对一遍。</p>
+    </section>
+
+    <!-- 模拟卷 -->
+    <section class="sheet panel" id="panel-exam" role="tabpanel" hidden>
+      <p class="muted fine no-print">先在「资料」页把历届考题的文件勾上「历届题」。AI 会照历届题的格式、题型、分值和难度，结合你的学习资料，出一套全新的变式模拟卷。</p>
+      <div class="controls no-print">
+        <label>难度
+          <select id="examDiff"><option selected>和历届一样</option><option>比历届略简单</option><option>比历届略难</option></select>
+        </label>
+        <label class="grow">重点章节或主题（可不填）
+          <input id="examFocus" type="text" placeholder="不填 = 像历届一样覆盖全部范围">
+        </label>
+        <button class="btn primary" id="btnExam" data-gen>生成模拟卷</button>
+      </div>
+      <div class="notice error" id="err-exam" hidden></div>
+      <div class="bar no-print" id="examBar" hidden>
+        <span class="muted fine" id="examMeta"></span><span class="spacer"></span>
+        <button class="btn small line" id="btnCopyExam">复制</button>
+        <button class="btn small line" id="btnDelExam">删除这份模拟卷</button>
+        <button class="btn small line" id="btnDownExam">下载 .md</button>
+        <button class="btn small line" id="btnPrintExam">打印 / 存为 PDF</button>
+      </div>
+      <details class="scope-box no-print" id="examAnalysis" hidden><summary>AI 对历届题的分析（点开核对它有没有看对）</summary><div class="md" id="examAnalysisOut"></div></details>
+      <article id="examPaper" class="md"></article>
+      <details class="scope-box" id="examAnsBox" hidden><summary>参考答案与评分要点（做完再点开）</summary><div class="md" id="examAnsOut"></div></details>
+      <div class="bar no-print histbar" id="hb-exam"></div>
+      <p class="muted fine no-print">模拟卷和答案都由 AI 生成，请自己再核对；难度是 AI 按历届题估计的，可能有偏差。</p>
     </section>
 
     <!-- 问答 -->
@@ -806,7 +835,7 @@ const TYPE_CFG = {
     chips: [SUMMARY_CHIP, WEAK_CHIP, ['要点速查表', '把资料里的重要内容整理成一张速查表。']]
   }
 };
-const PER = () => ({ notes: '', notesMeta: '', mindmap: '', mindmapMeta: '', cards: [], quiz: [], qi: 0, qres: {}, wrong: [], chat: [] });
+const PER = () => ({ exam: '', examMeta: '', notes: '', notesMeta: '', mindmap: '', mindmapMeta: '', cards: [], quiz: [], qi: 0, qres: {}, wrong: [], chat: [] });
 const PER_KEYS = Object.keys(PER());
 const BAD_NAMES = ['__proto__', 'constructor', 'prototype'];
 const MAX_SUBJECTS = 12;
@@ -864,6 +893,8 @@ function loadState() {
         if (typeof d.notesMeta !== 'string') d.notesMeta = '';
         if (typeof d.mindmap !== 'string') d.mindmap = '';
         if (typeof d.mindmapMeta !== 'string') d.mindmapMeta = '';
+        if (typeof d.exam !== 'string') d.exam = '';
+        if (typeof d.examMeta !== 'string') d.examMeta = '';
       }
       S.data[n] = d;
     });
@@ -1311,6 +1342,72 @@ async function genVariants() {
   });
 }
 
+
+/* ---------- 模拟卷：照历届题的格式和难度，结合学习资料出一套变式卷 ---------- */
+function splitExam(t) {
+  const o = { analysis: '', paper: '', ans: '' };
+  const m = String(t || '').match(/@@(ANALYSIS|PAPER|ANSWER)\b/g);
+  if (!m) { o.paper = String(t || ''); return o; }
+  String(t).split(/@@(ANALYSIS|PAPER|ANSWER)\b/).forEach((x, i, a) => {
+    if (x === 'ANALYSIS') o.analysis = a[i + 1] || '';
+    else if (x === 'PAPER') o.paper = a[i + 1] || '';
+    else if (x === 'ANSWER') o.ans = a[i + 1] || '';
+  });
+  ['analysis', 'paper', 'ans'].forEach(k => { o[k] = o[k].trim(); });
+  return o;
+}
+function renderExam() {
+  const bar = $('#examBar'), paper = $('#examPaper'), an = $('#examAnalysis'), ab = $('#examAnsBox');
+  if (!S.exam) {
+    paper.innerHTML = '<div class="empty">还没有模拟卷。先在「资料」页把历届考题标为「历届题」，再点上面的「生成模拟卷」。</div>';
+    bar.hidden = true; an.hidden = true; ab.hidden = true; return;
+  }
+  const x = splitExam(S.exam);
+  paper.innerHTML = renderMarkdown(x.paper);
+  an.hidden = !x.analysis; if (x.analysis) $('#examAnalysisOut').innerHTML = renderMarkdown(x.analysis);
+  ab.hidden = !x.ans; ab.open = false; if (x.ans) $('#examAnsOut').innerHTML = renderMarkdown(x.ans);
+  $('#examMeta').textContent = S.examMeta; bar.hidden = false;
+}
+async function genExam() {
+  const mine = subjFiles().filter(f => f.selected);
+  const past = new Set(mine.filter(f => f.past).map(f => f.id)), study = new Set(mine.filter(f => !f.past).map(f => f.id));
+  if (!past.size) { setErr('exam', '还没有历届题。请到「资料」页，在历届考题那份文件右边勾上「历届题」（并确保文件本身也勾选了）。'); return; }
+  if (!study.size) { setErr('exam', '还没有学习资料。除了历届题，请至少再勾选一份课本或笔记（不标「历届题」的那种），题目的知识点要从它来。'); return; }
+  if (!(await ensureRoom('exam'))) return;
+  run('exam', '正在出模拟卷', async (signal) => {
+    const pc = await gatherContext(false, signal, past);
+    const sc = await gatherContext(false, signal, study);
+    const diff = $('#examDiff').value, focus = $('#examFocus').value.trim();
+    const diffText = diff === '和历届一样' ? '整体难度、难题比例和历届真题保持一致。' : (diff === '比历届略简单' ? '整体难度比历届真题略低一点，格式和结构不变。' : '整体难度比历届真题略高一点，格式和结构不变。');
+    const prompt = [
+      '请出一套【' + S.settings.subject + '】模拟试卷。上面分两部分：「历届真题」只用来学习试卷的格式、题型和难度；「学习资料」是出题的知识来源。',
+      '要求：',
+      '1. 先分析历届真题：试卷由几部分（卷别 / Section）组成，每部分的题型、题数、每题分值、总分、考试时间（若印有）、使用的语言、难度分布、常考知识点和常见设问方式。',
+      '2. 模拟卷的结构、题型、题数、分值、总分、语言和排版风格，必须和历届真题一致；' + diffText,
+      '3. 每一道题都必须是全新的变式题：不能照抄或轻微改写历届真题和资料里的例题。可以换数字、换情境、换设问角度、换条件，或把相关知识点综合起来考。考的知识点和方法要在学习资料里有依据，做题所需的知识不能超出资料。',
+      focus ? '4. 【范围限定】只考这个主题：「' + focus + '」。结构和题型仍照历届真题，但题目都围绕这个主题；如果学习资料里完全没有相关内容，只回答“资料未涉及「' + focus + '」”，不要出卷。' : '4. 知识点覆盖范围像历届真题那样，分布到学习资料的不同章节。',
+      '5. 需要图形或图表的题，如果无法画出，用文字把图形、数据表描述清楚，保证题目可解。公式用 LaTeX。',
+      '6. 试卷开头写卷名、总分、时间（若历届有）和答题说明，和历届真题的写法保持一致。',
+      '7. 参考答案：每题给出正确答案；计算、结构、论述类题目再给出分步评分要点和对应分值。',
+      '严格按下面的格式输出，不要输出其他文字，不要用代码块包住整份内容：',
+      '@@ANALYSIS',
+      '（用 4 到 8 条短句，写你从历届真题看出的结构、题型、分值、难度和语言）',
+      '@@PAPER',
+      '（完整试卷，Markdown）',
+      '@@ANSWER',
+      '（参考答案与评分要点，按题号对应）'
+    ].join('\n');
+    const parts = [{ text: '===== 第一部分：历届真题（只用来学习格式、题型、分值和难度，不要照抄）=====' }].concat(pc.parts, [{ text: '===== 第二部分：学习资料（出题的知识来源）=====' }], sc.parts, [{ text: prompt }]);
+    const r = await callGemini({ system: systemPrompt(), contents: [{ role: 'user', parts: parts }], signal: signal });
+    if (!/@@PAPER\b/.test(r.text)) throw new AppError(/资料未涉及/.test(r.text) ? '资料里找不到「' + focus + '」相关的内容。请检查主题的写法。' : '没能从回复里解析出试卷，请再点一次「生成模拟卷」。');
+    pushHist('exam');
+    S.exam = r.text;
+    S.examMeta = new Date().toLocaleString() + ' · ' + past.size + ' 份历届题 + ' + study.size + ' 份资料' + (r.truncated ? ' · 内容被截断' : '');
+    save(); renderExam();
+    if (r.truncated) setErr('exam', '输出太长，被截断了（答案可能不完整）。可以在「重点章节」里缩小范围再生成。');
+  });
+}
+
 /* ---------- 问答里的照片 ---------- */
 const MAX_IMGS = 4;
 const IMG_ASK = '请看图，讲解这道题并给出解题思路和答案。';
@@ -1431,11 +1528,13 @@ function renderFiles() {
   if (!mine.length) { const li = document.createElement('li'); li.className = 'empty'; li.textContent = '「' + S.settings.subject + '」还没有资料。上传后可以在这里勾选要用哪几份。'; ul.appendChild(li); }
   mine.forEach(f => {
     const li = document.createElement('li'); li.className = 'file';
-    li.innerHTML = '<label><input type="checkbox"><span class="fname"></span></label><span class="fmeta"></span><button class="icon" type="button" title="删除" aria-label="删除">✕</button>';
+    li.innerHTML = '<label><input type="checkbox"><span class="fname"></span></label><label class="pastlab" title="历届考题：模拟卷会参照它的格式和难度"><input type="checkbox" class="past"> 历届题</label><span class="fmeta"></span><button class="icon" type="button" title="删除" aria-label="删除">✕</button>';
     const cb = $('input', li); cb.checked = !!f.selected;
     $('.fname', li).textContent = f.name;
     $('.fmeta', li).textContent = fmtSize(f.size || 0) + (f.kind === 'text' ? ' · 已转成文字' : (f.kind === 'remote' ? ' · 大文件通道' : ''));
     cb.onchange = () => { f.selected = cb.checked; idbPut(f); updateSummary(); renderScope('cards'); renderScope('quiz'); };
+    const pc = $('input.past', li); pc.checked = !!f.past;
+    pc.onchange = () => { f.past = pc.checked; idbPut(f); updateSummary(); };
     $('button', li).onclick = () => { if (f.shared) { (S.settings.hidden = S.settings.hidden || []).push(f.id); save(); } files = files.filter(x => x.id !== f.id); idbDel(f.id); renderFiles(); };
     ul.appendChild(li);
   });
@@ -1488,6 +1587,7 @@ function updateSummary() {
   const el = $('#fileSummary');
   if (!mine.length) { el.textContent = ''; return; }
   el.textContent = '已勾选 ' + sel.length + ' / ' + mine.length + ' 份，共 ' + fmtSize(total) + '。' +
+    (sel.some(f => f.past) ? '其中 ' + sel.filter(f => f.past).length + ' 份标为历届题。' : '') +
     (remote ? remote + ' 份大文件已上传到 Google，保留 48 小时，过期后会自动重新上传。' : '');
 }
 function updateCounts() {
@@ -1694,8 +1794,8 @@ function renderSubject() {
 }
 function refreshAll() {
   cardFilter = 'all'; cardPos = 0; cardShown = false;
-  ['files', 'notes', 'mindmap', 'cards', 'quiz', 'chat'].forEach(p => setErr(p, ''));
-  renderSubject(); renderFiles(); renderNotes(); if (typeof renderMindmap === 'function') renderMindmap(); renderCards(); renderQuiz(); renderChat(); renderHistBars();
+  ['files', 'notes', 'mindmap', 'cards', 'quiz', 'exam', 'chat'].forEach(p => setErr(p, ''));
+  renderSubject(); renderFiles(); renderNotes(); if (typeof renderMindmap === 'function') renderMindmap(); renderCards(); renderQuiz(); renderExam(); renderChat(); renderHistBars();
 }
 function switchSubject(name) {
   if (busy || name === S.settings.subject) return;
@@ -1856,7 +1956,7 @@ async function exportShare() {
   const skipped = [];
   for (const f of files) {
     if (!pubs.some(x => x.name === f.subject) || f.shared) continue;
-    const r = { id: 'sh-' + f.id, name: f.name, size: f.size, subject: f.subject, mime: f.mime };
+    const r = { id: 'sh-' + f.id, name: f.name, size: f.size, subject: f.subject, mime: f.mime, past: !!f.past };
     if (f.kind === 'remote') {
       if (!f.blob) { skipped.push(f.name); continue; }
       r.kind = 'inline'; r.data = await blobToB64(f.blob);
@@ -1915,6 +2015,8 @@ function parseFolder(folder) {
   const type = TYPES[parts[1]] ? parts[1] : (SCI_NAMES.indexOf(name) >= 0 ? 'sci' : 'gen');
   return { name: name, type: type };
 }
+// 仓库里的文件名含这些词，就自动标成「历届题」（自己手动改过的标记不会被覆盖）
+const PAST_NAME = /历届|真题|往年|试题|past\s*year|trial|spm\s*20\d\d/i;
 async function loadHosted() {
   if (location.protocol === 'file:') return; // 只在线上网址里生效
   let list = null;
@@ -1959,6 +2061,7 @@ async function loadHosted() {
     if (hid.indexOf(id) >= 0) continue;
     if (files.some(f => f.id !== id && f.subject === sj.name && f.name === it.name && f.size === it.size)) continue;
     const ex = files.find(f => f.id === id);
+    if (ex && ex.past === undefined && PAST_NAME.test(ex.name)) { ex.past = true; idbPut(ex); }
     if (ex && ex.size === it.size) continue;
     todo.push({ id: id, path: it.path, name: it.name, subject: sj.name, ex: ex });
   }
@@ -1973,6 +2076,7 @@ async function loadHosted() {
       const rec = await readFile(new File([await res.blob()], t.name), null);
       const old = rec.id;
       rec.id = t.id; rec.subject = t.subject; rec.shared = true; rec.selected = t.ex ? t.ex.selected !== false : true;
+      rec.past = t.ex ? !!t.ex.past : PAST_NAME.test(t.name);
       if (old !== rec.id) idbDel(old);
       if (t.ex) files = files.filter(f => f.id !== t.ex.id);
       files.push(rec); await idbPut(rec); renderFiles(); ok++;
@@ -2201,13 +2305,13 @@ function syncSnapshot() {
   const data = {};
   S.subjects.forEach(sj => {
     const d = S.data[sj.name];
-    data[sj.name] = { notes: d.notes, notesMeta: d.notesMeta, mindmap: d.mindmap, mindmapMeta: d.mindmapMeta, cards: d.cards, quiz: strip(d.quiz), qi: d.qi, qres: d.qres, wrong: strip(d.wrong), chat: strip(d.chat) };
+    data[sj.name] = { notes: d.notes, notesMeta: d.notesMeta, mindmap: d.mindmap, mindmapMeta: d.mindmapMeta, exam: d.exam, examMeta: d.examMeta, cards: d.cards, quiz: strip(d.quiz), qi: d.qi, qres: d.qres, wrong: strip(d.wrong), chat: strip(d.chat) };
   });
   return { subjects: S.subjects.map(x => ({ name: x.name, type: x.type, pal: x.pal, shared: !!x.shared })), data: data };
 }
 const syncHashNow = () => String(hash53(JSON.stringify(syncSnapshot())));
 function syncHasContent() {
-  return S.subjects.some(sj => { const d = S.data[sj.name]; return d && (d.notes || d.mindmap || d.cards.length || d.quiz.length || d.wrong.length || d.chat.length); });
+  return S.subjects.some(sj => { const d = S.data[sj.name]; return d && (d.notes || d.mindmap || d.exam || d.cards.length || d.quiz.length || d.wrong.length || d.chat.length); });
 }
 function normPer(src) {
   const d = PER();
@@ -2219,6 +2323,8 @@ function normPer(src) {
   if (typeof d.notesMeta !== 'string') d.notesMeta = '';
   if (typeof d.mindmap !== 'string') d.mindmap = '';
   if (typeof d.mindmapMeta !== 'string') d.mindmapMeta = '';
+  if (typeof d.exam !== 'string') d.exam = '';
+  if (typeof d.examMeta !== 'string') d.examMeta = '';
   return d;
 }
 function scheduleSync() {
@@ -2301,6 +2407,7 @@ function syncApply(rem, loud) {
     if (od.notes !== nd.notes) pushHist('notes', name);
     if (JSON.stringify(od.cards) !== JSON.stringify(nd.cards)) pushHist('cards', name);
     if (JSON.stringify(od.quiz) !== JSON.stringify(nd.quiz)) pushHist('quiz', name);
+    if (od.exam !== nd.exam) pushHist('exam', name);
     S.data[name] = nd;
   });
   S.settings.syncTs = rem.ts; S.settings.syncHash = syncHashNow(); save();
@@ -2309,9 +2416,9 @@ function syncApply(rem, loud) {
   if (!loud) toast('已从云端更新笔记等内容');
 }
 
-/* ---------- 历史版本：笔记 / 闪卡 / 模拟题，每类每学科保留最近 10 版（存在 IndexedDB） ---------- */
+/* ---------- 历史版本：笔记 / 闪卡 / 模拟题 / 模拟卷，每类每学科保留最近 30 版（存在 IndexedDB） ---------- */
 const HIST_MAX = 30;
-const KIND_NAME = { notes: '笔记', cards: '闪卡', quiz: '模拟题' };
+const KIND_NAME = { notes: '笔记', cards: '闪卡', quiz: '模拟题', exam: '模拟卷' };
 let hist = [];
 const histPut = r => idbTx('hist', 'readwrite', st => st.put(r)).catch(() => {});
 const histDel = id => idbTx('hist', 'readwrite', st => st.delete(id)).catch(() => {});
@@ -2320,6 +2427,7 @@ function snapOf(kind, subj) {
   const d = S.data[subj || S.settings.subject]; if (!d) return null;
   if (kind === 'notes') return d.notes ? { notes: d.notes, notesMeta: d.notesMeta } : null;
   if (kind === 'cards') return d.cards.length ? { cards: JSON.parse(JSON.stringify(d.cards)) } : null;
+  if (kind === 'exam') return d.exam ? { exam: d.exam, examMeta: d.examMeta } : null;
   return d.quiz.length ? JSON.parse(JSON.stringify({ quiz: d.quiz, qi: d.qi, qres: d.qres })) : null;
 }
 function pushHist(kind, subj) {
@@ -2359,14 +2467,16 @@ function restoreHist(rec) {
   const v = rec.v;
   if (kind === 'notes') { d.notes = v.notes; d.notesMeta = v.notesMeta; }
   else if (kind === 'cards') { d.cards = v.cards; cardPos = 0; cardShown = false; cardFilter = 'all'; }
+  else if (kind === 'exam') { d.exam = v.exam; d.examMeta = v.examMeta || ''; }
   else { d.quiz = v.quiz; d.qi = v.qi || 0; d.qres = v.qres || {}; }
-  save(); renderNotes(); renderCards(); renderQuiz(); renderHistBars();
+  save(); renderNotes(); renderCards(); renderQuiz(); renderExam(); renderHistBars();
   toast('已恢复到 ' + new Date(rec.ts).toLocaleString() + ' 的' + KIND_NAME[kind]);
 }
 function histPreview(h) {
   const v = h.v;
   if (h.kind === 'notes') return shortText((v.notes || '').replace(/[#*>`$\n]+/g, ' ').trim(), 40);
   if (h.kind === 'cards') return v.cards.length + ' 张 · ' + shortText(v.cards[0] ? v.cards[0].q : '', 30);
+  if (h.kind === 'exam') return shortText((v.exam || '').replace(/@@\w+|[#*>`$\n]+/g, ' ').trim(), 40);
   return v.quiz.length + ' 道 · ' + shortText(v.quiz[0] ? v.quiz[0].stem : '', 30);
 }
 function openHist(kind, expanded) {
@@ -2393,8 +2503,8 @@ function openHist(kind, expanded) {
   const d = $('#dlgHist'); if (d.showModal) { if (!d.open) d.showModal(); } else d.setAttribute('open', '');
 }
 function renderHistBars() {
-  const gens = { notes: genNotes, cards: genCards, quiz: genQuiz };
-  ['notes', 'cards', 'quiz'].forEach(kind => {
+  const gens = { notes: genNotes, cards: genCards, quiz: genQuiz, exam: genExam };
+  ['notes', 'cards', 'quiz', 'exam'].forEach(kind => {
     const el = $('#hb-' + kind); if (!el) return;
     const n = histOf(kind).length, has = !!snapOf(kind);
     el.innerHTML = ''; el.hidden = !has && !n; if (el.hidden) return;
@@ -2404,6 +2514,7 @@ function renderHistBars() {
     if (!n) u.disabled = true;
     mk('🕘 历史版本（' + n + '/' + HIST_MAX + ' 版）', () => openHist(kind, false));
     if (kind === 'notes' && has) mk('🗑 删除这份笔记', () => $('#btnDelNotes').click());
+    if (kind === 'exam' && has) mk('🗑 删除这份模拟卷', () => $('#btnDelExam').click());
   });
 }
 
@@ -2450,7 +2561,7 @@ async function exportBackup() {
   S.subjects.forEach(sj => { const d = S.data[sj.name]; ['chat', 'wrong', 'quiz'].forEach(k => (d[k] || []).forEach(m => (m.imgs || []).forEach(i => ids.add(i)))); });
   for (const id of ids) { const r = await getImg(id); if (r) out.imgs.push(r); }
   if (withFiles) for (const f of files) {
-    const r = { id: f.id, name: f.name, size: f.size, subject: f.subject, mime: f.mime, kind: f.kind === 'remote' ? 'inline' : f.kind, selected: f.selected, shared: !!f.shared };
+    const r = { id: f.id, name: f.name, size: f.size, subject: f.subject, mime: f.mime, kind: f.kind === 'remote' ? 'inline' : f.kind, selected: f.selected, shared: !!f.shared, past: !!f.past };
     if (f.kind === 'remote') { if (!f.blob) continue; r.data = await blobToB64(f.blob); } else r.data = f.data;
     out.files.push(r);
   }
@@ -2482,6 +2593,8 @@ async function importBackup(file) {
     if (typeof d.notesMeta !== 'string') d.notesMeta = '';
     if (typeof d.mindmap !== 'string') d.mindmap = '';
     if (typeof d.mindmapMeta !== 'string') d.mindmapMeta = '';
+    if (typeof d.exam !== 'string') d.exam = '';
+    if (typeof d.examMeta !== 'string') d.examMeta = '';
     S.data[name] = d; names.push(name);
   }
   for (const r of (o.imgs || [])) if (r && typeof r.id === 'string' && typeof r.data === 'string' && typeof r.mime === 'string') await imgPut({ id: r.id, mime: r.mime, data: r.data });
@@ -2493,7 +2606,7 @@ async function importBackup(file) {
   let nf = 0;
   for (const f of (o.files || [])) {
     if (!f || typeof f.id !== 'string' || names.indexOf(f.subject) < 0 || files.some(x => x.id === f.id) || typeof f.data !== 'string') continue;
-    const rec = { id: f.id, name: String(f.name), size: f.size, subject: f.subject, mime: f.mime, kind: f.kind === 'text' ? 'text' : 'inline', data: f.data, selected: f.selected !== false, shared: !!f.shared };
+    const rec = { id: f.id, name: String(f.name), size: f.size, subject: f.subject, mime: f.mime, kind: f.kind === 'text' ? 'text' : 'inline', data: f.data, selected: f.selected !== false, shared: !!f.shared, past: !!f.past };
     files.push(rec); await idbPut(rec); nf++;
   }
   if (!S.subjects.some(x => x.name === S.settings.subject)) S.settings.subject = S.subjects[0].name;
@@ -2585,6 +2698,16 @@ function bindUI() {
   $('#btnNotes').onclick = genNotes;
   $('#btnCards').onclick = genCards;
   $('#btnQuiz').onclick = genQuiz;
+  $('#btnExam').onclick = genExam;
+  $('#btnCopyExam').onclick = () => { const x = splitExam(S.exam); copyText(x.paper + (x.ans ? '\n\n---\n参考答案\n\n' + x.ans : '')); };
+  $('#btnDownExam').onclick = () => { const x = splitExam(S.exam); download('模拟卷-' + S.settings.subject + '.md', x.paper + (x.ans ? '\n\n---\n\n# 参考答案\n\n' + x.ans : '')); };
+  $('#btnPrintExam').onclick = () => { showTab('exam'); window.print(); };
+  $('#btnDelExam').onclick = () => {
+    if (busy || !S.exam) return;
+    const subj = S.settings.subject, old = { exam: S.exam, examMeta: S.examMeta };
+    S.exam = ''; S.examMeta = ''; save(); renderExam();
+    undoToast('已删除「' + subj + '」的模拟卷', () => { Object.assign(S.data[subj], old); save(); if (S.settings.subject === subj) renderExam(); });
+  };
   $('#btnSend').onclick = () => sendChat();
   $('#chatInput').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendChat(); } });
   $('#btnClearChat').onclick = () => { if (!S.chat.length) return; const old = S.chat, subj = S.settings.subject; S.chat = []; save(); renderChat(); renderWrong(); undoToast('已清空对话', () => { S.data[subj].chat = old; save(); if (S.settings.subject === subj) { renderChat(); renderWrong(); } }, gcImgs); };
@@ -2640,7 +2763,7 @@ async function init() {
     if (f.selected === undefined) f.selected = true;
     if (!f.subject) { f.subject = S.settings.subject; idbPut(f); } // 旧版本传的资料归到当时选中的学科
   });
-  renderSubjectNav(); renderSubject(); paintShare(); renderBanner(); renderFiles(); renderNotes(); if (typeof renderMindmap === 'function') renderMindmap(); renderCards(); renderQuiz(); renderChat(); renderHistBars();
+  renderSubjectNav(); renderSubject(); paintShare(); renderBanner(); renderFiles(); renderNotes(); if (typeof renderMindmap === 'function') renderMindmap(); renderCards(); renderQuiz(); renderExam(); renderChat(); renderHistBars();
   gcImgs();
   loadHosted();
   syncPull(false);
