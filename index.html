@@ -484,7 +484,8 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
 
     <!-- 模拟卷 -->
     <section class="sheet panel" id="panel-exam" role="tabpanel" hidden>
-      <p class="muted fine no-print">先在「资料」页把历届考题的文件勾上「历届题」。AI 会照历届题的格式、题型、分值和难度，结合你的学习资料，出一套全新的变式模拟卷。</p>
+      <p class="muted fine no-print">先在下面的「历届题设置」里勾出哪几份是历届考题（设好会记住，平时可以收起来）。AI 会照历届题的格式、题型、分值和难度，结合你的学习资料，出一套全新的变式模拟卷。</p>
+      <div class="scope no-print" id="examPast"></div>
       <div class="controls no-print">
         <label>难度
           <select id="examDiff"><option selected>和历届一样</option><option>比历届略简单</option><option>比历届略难</option></select>
@@ -1356,10 +1357,36 @@ function splitExam(t) {
   ['analysis', 'paper', 'ans'].forEach(k => { o[k] = o[k].trim(); });
   return o;
 }
+
+// 模拟卷页里的「历届题设置」：勾出哪几份文件是历届考题（平时收起来，不占地方）
+let examPastOpen = false;
+function renderExamPast() {
+  const box = $('#examPast'); if (!box) return;
+  const mine = subjFiles();
+  box.innerHTML = '';
+  if (!mine.length) { box.hidden = true; return; }
+  box.hidden = false;
+  const det = document.createElement('details'); det.className = 'scope-box'; det.open = examPastOpen;
+  det.addEventListener('toggle', () => { examPastOpen = det.open; });
+  const sm = document.createElement('summary');
+  const cnt = () => mine.filter(f => f.past).length;
+  const txt = () => cnt() ? '历届题设置：已选 ' + cnt() + ' 份历届题' : '历届题设置：还没有选历届题';
+  sm.textContent = txt(); det.appendChild(sm);
+  const tip = document.createElement('p'); tip.className = 'muted fine'; tip.style.margin = '8px 0 0'; tip.textContent = '勾上的文件会被当作历届考题，只用来参照格式、题型、分值和难度；没勾的是出题用的学习资料。'; det.appendChild(tip);
+  const ul = document.createElement('ul'); ul.className = 'scope-list';
+  mine.forEach(f => {
+    const li = document.createElement('li'), lb = document.createElement('label');
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!f.past;
+    cb.onchange = () => { f.past = cb.checked; idbPut(f); sm.textContent = txt(); };
+    const nm = document.createElement('span'); nm.className = 'fname'; nm.textContent = f.name;
+    lb.appendChild(cb); lb.appendChild(nm); li.appendChild(lb); ul.appendChild(li);
+  });
+  det.appendChild(ul); box.appendChild(det);
+}
 function renderExam() {
   const bar = $('#examBar'), paper = $('#examPaper'), an = $('#examAnalysis'), ab = $('#examAnsBox');
   if (!S.exam) {
-    paper.innerHTML = '<div class="empty">还没有模拟卷。先在「资料」页把历届考题标为「历届题」，再点上面的「生成模拟卷」。</div>';
+    paper.innerHTML = '<div class="empty">还没有模拟卷。先在上面的「历届题设置」里勾出历届考题，再点「生成模拟卷」。</div>';
     bar.hidden = true; an.hidden = true; ab.hidden = true; return;
   }
   const x = splitExam(S.exam);
@@ -1371,7 +1398,7 @@ function renderExam() {
 async function genExam() {
   const mine = subjFiles().filter(f => f.selected);
   const past = new Set(mine.filter(f => f.past).map(f => f.id)), study = new Set(mine.filter(f => !f.past).map(f => f.id));
-  if (!past.size) { setErr('exam', '还没有历届题。请到「资料」页，在历届考题那份文件右边勾上「历届题」（并确保文件本身也勾选了）。'); return; }
+  if (!past.size) { setErr('exam', '还没有历届题。请在上面展开「历届题设置」，勾出哪几份是历届考题（这些文件在「资料」页也要是勾选状态）。'); return; }
   if (!study.size) { setErr('exam', '还没有学习资料。除了历届题，请至少再勾选一份课本或笔记（不标「历届题」的那种），题目的知识点要从它来。'); return; }
   if (!(await ensureRoom('exam'))) return;
   run('exam', '正在出模拟卷', async (signal) => {
@@ -1528,17 +1555,15 @@ function renderFiles() {
   if (!mine.length) { const li = document.createElement('li'); li.className = 'empty'; li.textContent = '「' + S.settings.subject + '」还没有资料。上传后可以在这里勾选要用哪几份。'; ul.appendChild(li); }
   mine.forEach(f => {
     const li = document.createElement('li'); li.className = 'file';
-    li.innerHTML = '<label><input type="checkbox"><span class="fname"></span></label><label class="pastlab" title="历届考题：模拟卷会参照它的格式和难度"><input type="checkbox" class="past"> 历届题</label><span class="fmeta"></span><button class="icon" type="button" title="删除" aria-label="删除">✕</button>';
+    li.innerHTML = '<label><input type="checkbox"><span class="fname"></span></label><span class="fmeta"></span><button class="icon" type="button" title="删除" aria-label="删除">✕</button>';
     const cb = $('input', li); cb.checked = !!f.selected;
     $('.fname', li).textContent = f.name;
     $('.fmeta', li).textContent = fmtSize(f.size || 0) + (f.kind === 'text' ? ' · 已转成文字' : (f.kind === 'remote' ? ' · 大文件通道' : ''));
     cb.onchange = () => { f.selected = cb.checked; idbPut(f); updateSummary(); renderScope('cards'); renderScope('quiz'); };
-    const pc = $('input.past', li); pc.checked = !!f.past;
-    pc.onchange = () => { f.past = pc.checked; idbPut(f); updateSummary(); };
     $('button', li).onclick = () => { if (f.shared) { (S.settings.hidden = S.settings.hidden || []).push(f.id); save(); } files = files.filter(x => x.id !== f.id); idbDel(f.id); renderFiles(); };
     ul.appendChild(li);
   });
-  updateSummary(); updateCounts(); renderScope('cards'); renderScope('quiz');
+  updateSummary(); updateCounts(); renderScope('cards'); renderScope('quiz'); renderExamPast();
 }
 // 闪卡 / 刷题页的「范围」：展开后勾选要用哪几份资料（只有 2 份以上资料时才显示）
 function renderScope(kind) {
@@ -1587,7 +1612,6 @@ function updateSummary() {
   const el = $('#fileSummary');
   if (!mine.length) { el.textContent = ''; return; }
   el.textContent = '已勾选 ' + sel.length + ' / ' + mine.length + ' 份，共 ' + fmtSize(total) + '。' +
-    (sel.some(f => f.past) ? '其中 ' + sel.filter(f => f.past).length + ' 份标为历届题。' : '') +
     (remote ? remote + ' 份大文件已上传到 Google，保留 48 小时，过期后会自动重新上传。' : '');
 }
 function updateCounts() {
