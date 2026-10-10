@@ -123,6 +123,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .subjects button.add{border:1.5px dashed var(--line);background:transparent;color:var(--muted);box-shadow:none;font-weight:600}
 .subjects button.add:hover:not(:disabled){background:var(--glass);color:var(--ink)}
 .subjects .cnt{font-style:normal;font-size:12px;font-weight:600;min-width:20px;padding:0 6px;border-radius:999px;background:rgba(127,140,160,.22);line-height:20px;text-align:center}
+.cite{color:var(--muted,#777);font-size:.85em}
+#notesOut.cite-hide .cite,#cardsArea.cite-hide .cite,#quizArea.cite-hide .cite,#wrongArea.cite-hide .cite,#chatLog.cite-hide .cite{display:none}
 .pastlab{font-size:12.5px;color:var(--muted,inherit);white-space:nowrap;display:inline-flex;align-items:center;gap:4px;cursor:pointer}
 .tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 12px}
 .tabs::-webkit-scrollbar{display:none}
@@ -392,6 +394,7 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
       <div class="notice error" id="err-notes" hidden></div>
       <div class="bar no-print" id="notesBar" hidden>
         <span class="muted fine" id="notesMeta"></span><span class="spacer"></span>
+        <button class="btn small primary" id="btnNotesCite" data-cite="notes" type="button" hidden>显示资料来源</button>
         <button class="btn small line" id="btnCopyNotes">复制</button>
         <button class="btn small line" id="btnDelNotes">删除这份笔记</button>
         <button class="btn small line" id="btnDownNotes">下载 .md</button>
@@ -450,6 +453,7 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
       </div>
       <div class="scope no-print" id="scope-cards" hidden></div>
       <div class="notice error" id="err-cards" hidden></div>
+      <div class="bar no-print" id="citebar-cards" hidden><span class="spacer"></span><button class="btn small line" type="button" data-cite="cards">显示资料来源</button></div>
       <div id="cardsArea"></div>
       <div class="bar no-print histbar" id="hb-cards"></div>
     </section>
@@ -476,6 +480,7 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
       </div>
       <div class="scope no-print" id="scope-quiz" hidden></div>
       <div class="notice error" id="err-quiz" hidden></div>
+      <div class="bar no-print" id="citebar-quiz" hidden><span class="spacer"></span><button class="btn small line" type="button" data-cite="quiz">显示资料来源</button></div>
       <div id="quizArea"></div>
       <div id="wrongArea"></div>
       <div class="bar no-print histbar" id="hb-quiz"></div>
@@ -517,6 +522,7 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
     <section class="sheet panel" id="panel-chat" role="tabpanel" hidden>
       <div class="chips no-print" id="chips"></div>
       <div class="notice error" id="err-chat" hidden></div>
+      <div class="bar no-print" id="citebar-chat" hidden><span class="spacer"></span><button class="btn small line" type="button" data-cite="chat">显示资料来源</button></div>
       <div id="chatLog" class="chatlog"></div>
       <div class="attach no-print" id="attachStrip" hidden></div>
       <div class="chatbox no-print" id="chatbox">
@@ -696,6 +702,8 @@ function restoreMath(html, stash) {
   });
 }
 
+// 把【文件名 第N页】这类资料来源包进 .cite，方便按需隐藏
+function markCites(html) { return String(html).replace(/【([^【】<>]{1,120})】/g, '<span class="cite">【$1】</span>'); }
 function renderMarkdown(md) {
   const p = protectMath(md || '');
   let html;
@@ -705,7 +713,7 @@ function renderMarkdown(md) {
   } else {
     html = '<p>' + esc(p.text).replace(/\n/g, '<br>') + '</p>';
   }
-  return restoreMath(html, p.stash);
+  return restoreMath(markCites(html), p.stash);
 }
 
 function parseCards(text) {
@@ -1741,6 +1749,26 @@ function renderNotes() {
   if (!S.notes) { out.innerHTML = '<div class="empty">还没有笔记。先在「资料」页上传文件，再点上面的「生成笔记」。</div>'; bar.hidden = true; return; }
   out.innerHTML = renderMarkdown(S.notes);
   $('#notesMeta').textContent = S.notesMeta; bar.hidden = false;
+}
+// 资料来源（【文件名 第N页】）：笔记 / 闪卡 / 刷题 / 问答里默认隐藏，打印出来更干净；点各页的「显示资料来源」才显示
+const citeShow = {};
+const CITE_BOX = { notes: ['#notesOut'], cards: ['#cardsArea'], quiz: ['#quizArea', '#wrongArea'], chat: ['#chatLog'] };
+function stripCites(text) { return String(text).replace(/[ \t]*【[^【】\n]{1,120}】/g, ''); }
+function syncCite(k) {
+  const boxes = CITE_BOX[k].map(x => $(x)).filter(Boolean);
+  boxes.forEach(b => b.classList.toggle('cite-hide', !citeShow[k]));
+  const has = boxes.some(b => b.querySelector('.cite'));
+  const btn = document.querySelector('[data-cite="' + k + '"]');
+  if (btn) { btn.hidden = !has; btn.textContent = citeShow[k] ? '隐藏资料来源' : '显示资料来源'; }
+  const bar = $('#citebar-' + k); if (bar) bar.hidden = !has;
+}
+function initCite() {
+  Object.keys(CITE_BOX).forEach(k => {
+    CITE_BOX[k].map(x => $(x)).filter(Boolean).forEach(b => new MutationObserver(() => syncCite(k)).observe(b, { childList: true, subtree: true }));
+    const btn = document.querySelector('[data-cite="' + k + '"]');
+    if (btn) btn.onclick = () => { citeShow[k] = !citeShow[k]; syncCite(k); };
+    syncCite(k);
+  });
 }
 function cardList() { return S.cards.map((c, i) => ({ c: c, i: i })).filter(x => cardFilter === 'all' || x.c.st !== 1); }
 function renderCards() {
@@ -2895,8 +2923,9 @@ function bindUI() {
   $('#btnImport').onclick = () => $('#importInput').click();
   $('#importInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) importBackup(f); };
   $('#btnCancel').onclick = () => { if (ctrl) ctrl.abort(); };
-  $('#btnCopyNotes').onclick = () => copyText(S.notes);
-  $('#btnDownNotes').onclick = () => download('复习笔记-' + S.settings.subject + '.md', S.notes);
+  initCite();
+  $('#btnCopyNotes').onclick = () => copyText(citeShow.notes ? S.notes : stripCites(S.notes));
+  $('#btnDownNotes').onclick = () => download('复习笔记-' + S.settings.subject + '.md', citeShow.notes ? S.notes : stripCites(S.notes));
   $('#btnPrintNotes').onclick = () => { showTab('notes'); window.print(); };
 }
 
