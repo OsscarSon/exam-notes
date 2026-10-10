@@ -321,13 +321,7 @@ dialog::backdrop{background:rgba(8,16,24,.55)}
 .scope-list label{display:flex;gap:10px;align-items:center;cursor:pointer;min-width:0}
 .scope-list input{width:18px;height:18px;flex:0 0 auto;accent-color:var(--ink)}
 .scope-list .fname{flex:1;min-width:0}
-.cite{display:none}
-body.show-cite .cite{display:inline;font-size:.78em;color:var(--muted);background:var(--hover);border-radius:4px;padding:0 .3em;margin-left:.2em}
-.streaming::after{content:'▍';margin-left:2px;opacity:.55;animation:cblink 1s steps(2,start) infinite}
-@keyframes cblink{50%{opacity:0}}
-@media (prefers-reduced-motion:reduce){.streaming::after{animation:none}}
 @media print{
-  .cite,body.show-cite .cite{display:none!important}
   body{background:#fff;color:#000}
   .aurora{display:none}
   .no-print{display:none!important}
@@ -398,7 +392,6 @@ body.show-cite .cite{display:inline;font-size:.78em;color:var(--muted);backgroun
       <div class="notice error" id="err-notes" hidden></div>
       <div class="bar no-print" id="notesBar" hidden>
         <span class="muted fine" id="notesMeta"></span><span class="spacer"></span>
-        <button class="btn small line" id="btnCiteNotes" title="资料出处默认隐藏；打印 / 存为 PDF 时不会出现出处">显示出处</button>
         <button class="btn small line" id="btnCopyNotes">复制</button>
         <button class="btn small line" id="btnDelNotes">删除这份笔记</button>
         <button class="btn small line" id="btnDownNotes">下载 .md</button>
@@ -505,6 +498,8 @@ body.show-cite .cite{display:inline;font-size:.78em;color:var(--muted);backgroun
       <div class="notice error" id="err-exam" hidden></div>
       <div class="bar no-print" id="examBar" hidden>
         <span class="muted fine" id="examMeta"></span><span class="spacer"></span>
+        <button class="btn small primary" id="btnExamAns" type="button">显示答案</button>
+        <button class="btn small line" id="btnExamAnsRegen" data-gen type="button" hidden>重新生成答案</button>
         <button class="btn small line" id="btnCopyExam">复制</button>
         <button class="btn small line" id="btnDelExam">删除这份模拟卷</button>
         <button class="btn small line" id="btnDownExam">下载 .md</button>
@@ -512,6 +507,7 @@ body.show-cite .cite{display:inline;font-size:.78em;color:var(--muted);backgroun
       </div>
       <details class="scope-box no-print" id="examAnalysis" hidden><summary>AI 对历届题的分析（点开核对它有没有看对）</summary><div class="md" id="examAnalysisOut"></div></details>
       <article id="examPaper" class="md"></article>
+      <p class="muted fine no-print" id="examAnsNote" hidden></p>
       <details class="scope-box" id="examAnsBox" hidden><summary>参考答案与评分要点（做完再点开）</summary><div class="md" id="examAnsOut"></div></details>
       <div class="bar no-print histbar" id="hb-exam"></div>
       <p class="muted fine no-print">模拟卷和答案都由 AI 生成，请自己再核对；难度是 AI 按历届题估计的，可能有偏差。</p>
@@ -529,7 +525,7 @@ body.show-cite .cite{display:inline;font-size:.78em;color:var(--muted);backgroun
         <textarea id="chatInput" rows="2" placeholder="问点什么，或点左边的相机拍一道题（Ctrl + Enter 发送）"></textarea>
         <button class="btn primary" id="btnSend" data-gen>发送</button>
       </div>
-      <div class="bar no-print" style="margin-top:10px"><button class="btn small line" data-gen id="btnRegenChat">🔄 重新回答</button><button class="btn small line" id="btnUndoChat">↩ 撤回上一问</button><button class="btn small line" id="btnClearChat">清空对话</button><button class="btn small line" id="btnCiteChat" title="资料出处默认隐藏">显示出处</button></div>
+      <div class="bar no-print" style="margin-top:10px"><button class="btn small line" data-gen id="btnRegenChat">🔄 重新回答</button><button class="btn small line" id="btnUndoChat">↩ 撤回上一问</button><button class="btn small line" id="btnClearChat">清空对话</button></div>
     </section>
   </main>
 </div>
@@ -700,23 +696,6 @@ function restoreMath(html, stash) {
   });
 }
 
-// 出处标注：模型会在句末写【文件名 第N页】。这里把它们包进 <span class="cite">，默认隐藏、可一键显示，打印 / 存 PDF 时一律不出现
-function isCiteText(t) {
-  if (/第\s*[\d０-９][\d０-９\s\-–—~～、,，和与及至到]*\s*页/.test(t)) return true;
-  if (/(?:^|[\s_（(])pp?\.?\s*\d+/i.test(t)) return true;
-  if (/\.(?:pdf|docx?|pptx?|xlsx?|txt|md|csv|png|jpe?g|epub)(?![a-z])/i.test(t)) return true;
-  try { return files.some(f => f.name && (t.indexOf(f.name) >= 0 || t.indexOf(f.name.replace(/\.[^.]+$/, '')) >= 0)); } catch (e) { return false; }
-}
-function wrapCites(html) {
-  return html.replace(/【([^【】\n]{1,160})】/g, (m, inner) => isCiteText(inner) ? '<span class="cite">' + m + '</span>' : m);
-}
-function paintCite() {
-  const on = !!(S && S.settings && S.settings.showCite);
-  document.body.classList.toggle('show-cite', on);
-  ['#btnCiteNotes', '#btnCiteChat'].forEach(id => { const b = $(id); if (b) b.textContent = on ? '隐藏出处' : '显示出处'; });
-}
-function toggleCite() { S.settings.showCite = !S.settings.showCite; save(); paintCite(); }
-
 function renderMarkdown(md) {
   const p = protectMath(md || '');
   let html;
@@ -726,7 +705,7 @@ function renderMarkdown(md) {
   } else {
     html = '<p>' + esc(p.text).replace(/\n/g, '<br>') + '</p>';
   }
-  return wrapCites(restoreMath(html, p.stash));
+  return restoreMath(html, p.stash);
 }
 
 function parseCards(text) {
@@ -1051,12 +1030,12 @@ async function run(panel, label, task) {
 }
 
 /* ---------- Gemini ---------- */
+/* 边生成边显示：用 streamGenerateContent（SSE）接收，文字一出来就交给 opts.onText；没有 onText 时只在忙碌提示里显示“已收到 N 字” */
 async function callGemini(opts) {
   const key = (S.settings.key || '').trim();
   if (!key) throw new AppError('请先在「设置」里填入 Gemini API key。');
   const model = (S.settings.model || '').trim() || 'gemini-3.6-flash';
-  const stream = typeof opts.onText === 'function'; // 传了 onText 就边生成边回调（流式）
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + (stream ? ':streamGenerateContent?alt=sse&key=' : ':generateContent?key=') + encodeURIComponent(key);
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':streamGenerateContent?alt=sse&key=' + encodeURIComponent(key);
   const body = { contents: opts.contents, generationConfig: { maxOutputTokens: opts.maxTokens || 32768 } };
   if (opts.system) body.systemInstruction = { parts: [{ text: opts.system }] };
   let attempt = 0;
@@ -1070,10 +1049,10 @@ async function callGemini(opts) {
       if (e && e.name === 'AbortError') throw e;
       throw new AppError('网络请求失败。请检查网络；如果在需要特殊网络才能访问 Google 的地区，请先连好网络再试。');
     }
-    const streaming = res.ok && stream && !!res.body;
-    let data = null;
-    if (!streaming) { try { data = await res.json(); } catch (e) { data = null; } }
     if (!res.ok) {
+      let data = null;
+      try { data = await res.json(); } catch (e) { data = null; }
+      if (Array.isArray(data)) data = data[0];
       const msg = (data && data.error && data.error.message) || '';
       if (res.status === 400 && /max.?output.?tokens|output token/i.test(msg) && body.generationConfig.maxOutputTokens > 8192) {
         body.generationConfig.maxOutputTokens = 8192; continue;
@@ -1085,70 +1064,82 @@ async function callGemini(opts) {
       }
       throw new AppError(explainError(res.status, data));
     }
-    if (streaming) return await readGeminiStream(res, opts);
-    const cand = data && data.candidates && data.candidates[0];
-    if (!cand) {
-      const br = data && data.promptFeedback && data.promptFeedback.blockReason;
-      throw new AppError(br ? '请求被拦截了（' + br + '）。换一份资料或调整要求再试。' : '模型没有返回内容，请重试。');
-    }
-    const parts = (cand.content && cand.content.parts) || [];
-    const text = parts.filter(p => !p.thought && typeof p.text === 'string').map(p => p.text).join('');
-    if (!text.trim()) throw new AppError('模型没有返回文字内容' + (cand.finishReason ? '（' + cand.finishReason + '）' : '') + '，请重试。', 'EMPTY');
-    return { text: text, truncated: cand.finishReason === 'MAX_TOKENS' };
-  }
-}
-
-// 读取 Gemini 的流式（SSE）回复：每收到一段文字就调用 opts.onText(到目前为止的全文)
-async function readGeminiStream(res, opts) {
-  const reader = res.body.getReader(), dec = new TextDecoder();
-  let buf = '', text = '', finish = '', block = '';
-  const eat = line => {
-    if (line.indexOf('data:') !== 0) return;
-    const js = line.slice(5).trim(); if (!js) return;
-    let d; try { d = JSON.parse(js); } catch (e) { return; }
-    if (d.error) throw new AppError(explainError(d.error.code || 0, d));
-    const c = d.candidates && d.candidates[0];
-    if (!c) { if (d.promptFeedback && d.promptFeedback.blockReason) block = d.promptFeedback.blockReason; return; }
-    const ps = (c.content && c.content.parts) || [];
-    const add = ps.filter(p => !p.thought && typeof p.text === 'string').map(p => p.text).join('');
-    if (add) { text += add; opts.onText(text); }
-    if (c.finishReason) finish = c.finishReason;
-  };
-  try {
-    for (;;) {
-      const r = await reader.read(); if (r.done) break;
-      buf += dec.decode(r.value, { stream: true });
+    let text = '', finish = '', block = '', sawCand = false, apiErr = null, buf = '';
+    const handle = line => {
+      line = line.trim();
+      if (line.indexOf('data:') !== 0) return;
+      const js = line.slice(5).trim();
+      if (!js || js === '[DONE]') return;
+      let o; try { o = JSON.parse(js); } catch (e) { return; }
+      if (o.error) { apiErr = o.error; return; }
+      if (o.promptFeedback && o.promptFeedback.blockReason) block = o.promptFeedback.blockReason;
+      const c = o.candidates && o.candidates[0];
+      if (!c) return;
+      sawCand = true;
+      ((c.content && c.content.parts) || []).forEach(p => { if (!p.thought && typeof p.text === 'string') text += p.text; });
+      if (c.finishReason) finish = c.finishReason;
+    };
+    const feed = chunk => {
+      buf += chunk;
       let i;
-      while ((i = buf.search(/\r?\n/)) >= 0) { const line = buf.slice(0, i); buf = buf.slice(i + (buf[i] === '\r' ? 2 : 1)); eat(line); }
+      while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i); buf = buf.slice(i + 1); handle(line); }
+    };
+    const tick = () => {
+      if (!text) return;
+      busyNote = '已收到 ' + text.length + ' 字';
+      if (opts.onText) { try { opts.onText(text); } catch (e) { /* 显示出错不影响生成 */ } }
+    };
+    try {
+      if (res.body && res.body.getReader) {
+        const reader = res.body.getReader(), dec = new TextDecoder('utf-8');
+        for (;;) {
+          const r = await reader.read();
+          if (r.done) break;
+          feed(dec.decode(r.value, { stream: true }));
+          tick();
+        }
+        feed(dec.decode());
+      } else {
+        feed(await res.text());
+      }
+      if (buf.trim()) { handle(buf); buf = ''; }
+    } catch (e) {
+      if (e && e.name === 'AbortError') throw e;
+      throw new AppError('网络在接收内容时中断了，请再试一次。');
     }
-    buf += dec.decode();
-    if (buf) buf.split(/\r?\n/).forEach(eat);
-  } catch (e) {
-    if (e && (e.name === 'AbortError' || e instanceof AppError)) throw e;
-    throw new AppError('生成到一半网络断了，请重试。');
+    if (apiErr && !text.trim()) {
+      const st = apiErr.code || 500;
+      if ((st === 503 || st === 500) && attempt < 2) {
+        attempt++; busyNote = '服务繁忙，第 ' + attempt + ' 次自动重试';
+        await new Promise(r => setTimeout(r, 3000 * attempt));
+        busyNote = ''; continue;
+      }
+      throw new AppError(explainError(st, { error: apiErr }));
+    }
+    if (!sawCand && !text) throw new AppError(block ? '请求被拦截了（' + block + '）。换一份资料或调整要求再试。' : '模型没有返回内容，请重试。');
+    if (!text.trim()) throw new AppError('模型没有返回文字内容' + (finish ? '（' + finish + '）' : '') + '，请重试。', 'EMPTY');
+    busyNote = '';
+    return { text: text, truncated: finish === 'MAX_TOKENS' };
   }
-  if (!text.trim()) throw new AppError(block ? '请求被拦截了（' + block + '）。换一份资料或调整要求再试。' : '模型没有返回文字内容' + (finish ? '（' + finish + '）' : '') + '，请重试。', 'EMPTY');
-  return { text: text, truncated: finish === 'MAX_TOKENS' };
 }
-// 流式显示用的节流：最多每 ~100ms 重画一次，避免长笔记越画越卡
-function makeThrottle(fn, ms) {
-  ms = ms || 100;
-  let last = 0, tm = null, val = '', dead = false;
-  const f = function (t) {
-    val = t; if (dead || tm) return;
-    tm = setTimeout(() => { tm = null; if (dead) return; last = Date.now(); fn(val); }, Math.max(0, ms - (Date.now() - last)));
+// 把高频的 onText 回调限流成每 0.35 秒画一次；.stop() 取消还没画的那一次，避免盖掉最终结果
+function liveRender(fn) {
+  let last = 0, pend = '', timer = null;
+  const f = t => {
+    pend = t;
+    const now = Date.now();
+    if (now - last >= 350) { last = now; fn(t); }
+    else if (!timer) timer = setTimeout(() => { timer = null; last = Date.now(); fn(pend); }, 350 - (now - last));
   };
-  f.stop = () => { dead = true; clearTimeout(tm); tm = null; };
+  f.stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
   return f;
 }
-// 问答：在聊天记录末尾放一个「正在写」的气泡，边收边显示
-async function askChatStream(sys, contents, signal) {
+function chatLive() {
   const log = $('#chatLog');
-  const live = document.createElement('div'); live.className = 'msg model md streaming'; live.textContent = '正在想…';
-  log.appendChild(live); live.scrollIntoView({ block: 'nearest' });
-  const th = makeThrottle(t => { live.innerHTML = renderMarkdown(t); live.scrollIntoView({ block: 'nearest' }); });
-  try { return await callGemini({ system: sys, contents: contents, signal: signal, onText: th }); }
-  finally { th.stop(); }
+  const d = document.createElement('div'); d.className = 'msg model md'; d.textContent = '…';
+  log.appendChild(d); d.scrollIntoView({ block: 'nearest' });
+  const f = liveRender(t => { d.innerHTML = renderMarkdown(t); d.scrollIntoView({ block: 'nearest' }); });
+  return f;
 }
 
 const BUILTIN_HINTS = {
@@ -1335,13 +1326,11 @@ async function genNotes() {
       '4. 详细程度：' + detail + '。',
       '只写资料里有的内容，没有的不要补充。'
     ].join('\n');
-    const out = $('#notesOut');
-    out.classList.add('streaming');
-    const live = makeThrottle(t => { out.innerHTML = renderMarkdown(t); });
+    const live = liveRender(t => { $('#notesOut').innerHTML = renderMarkdown(t); });
     let r;
     try { r = await callGemini({ system: systemPrompt(), contents: [{ role: 'user', parts: ctx.parts.concat([{ text: prompt }]) }], signal: signal, onText: live }); }
-    catch (e) { live.stop(); out.classList.remove('streaming'); renderNotes(); throw e; }
-    live.stop(); out.classList.remove('streaming');
+    catch (e) { live.stop(); renderNotes(); throw e; }
+    live.stop();
     pushHist('notes');
     S.notes = r.text;
     S.notesMeta = new Date().toLocaleString() + ' · ' + ctx.count + ' 份资料' + (r.truncated ? ' · 内容被截断' : '');
@@ -1470,16 +1459,50 @@ function renderExamPast() {
   det.appendChild(ul); box.appendChild(det);
 }
 function renderExam() {
-  const bar = $('#examBar'), paper = $('#examPaper'), an = $('#examAnalysis'), ab = $('#examAnsBox');
+  const bar = $('#examBar'), paper = $('#examPaper'), an = $('#examAnalysis'), ab = $('#examAnsBox'), btn = $('#btnExamAns'), regen = $('#btnExamAnsRegen'), note = $('#examAnsNote');
   if (!S.exam) {
     paper.innerHTML = '<div class="empty">还没有模拟卷。先在上面的「历届题设置」里勾出历届考题，再点「生成模拟卷」。</div>';
-    bar.hidden = true; an.hidden = true; ab.hidden = true; return;
+    bar.hidden = true; an.hidden = true; ab.hidden = true; note.hidden = true; return;
   }
   const x = splitExam(S.exam);
   paper.innerHTML = renderMarkdown(x.paper);
   an.hidden = !x.analysis; if (x.analysis) $('#examAnalysisOut').innerHTML = renderMarkdown(x.analysis);
-  ab.hidden = !x.ans; ab.open = false; if (x.ans) $('#examAnsOut').innerHTML = renderMarkdown(x.ans);
+  const has = !!x.ans, cut = /截断/.test(S.examMeta || '');
+  ab.hidden = !has; ab.open = false; if (has) $('#examAnsOut').innerHTML = renderMarkdown(x.ans);
+  btn.textContent = has ? '显示答案' : '生成参考答案';
+  regen.hidden = !(has && cut);
+  note.hidden = has && !cut;
+  note.textContent = has ? '这份卷子生成时输出被截断过，答案可能不完整。可以点上面的「重新生成答案」。' : '这份卷子没有参考答案（可能是 AI 漏写了，或输出太长被截断）。点上面的「生成参考答案」补上。';
   $('#examMeta').textContent = S.examMeta; bar.hidden = false;
+}
+async function genExamAnswer() {
+  if (busy || !S.exam) return;
+  const x = splitExam(S.exam);
+  if (!x.paper) return;
+  run('exam', '正在生成参考答案', async (signal) => {
+    const study = new Set(subjFiles().filter(f => f.selected && !f.past).map(f => f.id));
+    const ctx = study.size ? await gatherContext(true, signal, study) : { parts: [], count: 0 };
+    const prompt = [
+      '下面是一套【' + S.settings.subject + '】模拟卷。请给出完整的参考答案和评分要点。',
+      '要求：',
+      '1. 按题号逐题作答，每题给出正确答案；选择题写字母并用一两句话说明理由。',
+      '2. 计算、结构、论述类题目，给出分步评分要点和对应分值，分值总和要和题目标注的分值一致。',
+      '3. 答案必须正确；公式用 LaTeX。',
+      '4. 只输出答案，不要重复题目，不要用代码块包住。',
+      '', '【试卷】', x.paper
+    ].join('\n');
+    const live = liveRender(t => { $('#examAnsOut').innerHTML = renderMarkdown(t.replace(/^\s*@@ANSWER\s*/, '')); const ab = $('#examAnsBox'); ab.hidden = false; ab.open = true; });
+    let r;
+    try { r = await callGemini({ system: systemPrompt({ noMaterials: !ctx.count }), contents: [{ role: 'user', parts: ctx.parts.concat([{ text: prompt }]) }], signal: signal, onText: live }); }
+    catch (e) { live.stop(); renderExam(); throw e; }
+    live.stop();
+    const ans = r.text.replace(/^\s*@@ANSWER\s*/, '').trim();
+    S.exam = (x.analysis ? '@@ANALYSIS\n' + x.analysis + '\n' : '') + '@@PAPER\n' + x.paper + '\n@@ANSWER\n' + ans;
+    S.examMeta = String(S.examMeta || '').replace(/ · (内容被截断|已补答案)/g, '') + ' · 已补答案' + (r.truncated ? ' · 内容被截断' : '');
+    save(); renderExam();
+    const ab = $('#examAnsBox'); if (!ab.hidden) ab.open = true;
+    if (r.truncated) setErr('exam', '答案输出太长，被截断了。可以再点一次「重新生成答案」。');
+  });
 }
 async function genExam() {
   const mine = subjFiles().filter(f => f.selected);
@@ -1511,13 +1534,18 @@ async function genExam() {
       '（参考答案与评分要点，按题号对应）'
     ].join('\n');
     const parts = [{ text: '===== 第一部分：历届真题（只用来学习格式、题型、分值和难度，不要照抄）=====' }].concat(pc.parts, [{ text: '===== 第二部分：学习资料（出题的知识来源）=====' }], sc.parts, [{ text: prompt }]);
-    const r = await callGemini({ system: systemPrompt(), contents: [{ role: 'user', parts: parts }], signal: signal });
-    if (!/@@PAPER\b/.test(r.text)) throw new AppError(/资料未涉及/.test(r.text) ? '资料里找不到「' + focus + '」相关的内容。请检查主题的写法。' : '没能从回复里解析出试卷，请再点一次「生成模拟卷」。');
+    const live = liveRender(t => { const x = splitExam(t); $('#examPaper').innerHTML = x.paper ? renderMarkdown(x.paper) : '<div class="empty">AI 正在分析历届题……</div>'; });
+    let r;
+    try { r = await callGemini({ system: systemPrompt(), contents: [{ role: 'user', parts: parts }], signal: signal, onText: live }); }
+    catch (e) { live.stop(); renderExam(); throw e; }
+    live.stop();
+    if (!/@@PAPER\b/.test(r.text)) { renderExam();  throw new AppError(/资料未涉及/.test(r.text) ? '资料里找不到「' + focus + '」相关的内容。请检查主题的写法。' : '没能从回复里解析出试卷，请再点一次「生成模拟卷」。'); }
     pushHist('exam');
     S.exam = r.text;
     S.examMeta = new Date().toLocaleString() + ' · ' + past.size + ' 份历届题 + ' + study.size + ' 份资料' + (r.truncated ? ' · 内容被截断' : '');
     save(); renderExam();
-    if (r.truncated) setErr('exam', '输出太长，被截断了（答案可能不完整）。可以在「重点章节」里缩小范围再生成。');
+    if (r.truncated) setErr('exam', '输出太长，被截断了（答案可能不完整）。可以在「重点章节」里缩小范围再生成，或点「重新生成答案」补全。');
+    else if (!/@@ANSWER\b/.test(r.text)) setErr('exam', '这次没有生成参考答案，可以点上面的「生成参考答案」补上。');
   });
 }
 
@@ -1618,7 +1646,9 @@ function sendChat(preset) {
         { role: 'model', parts: [{ text: '好的，我已读完这些资料，请提问。' }] }
       ] : [];
       const sys = systemPrompt({ images: hasImgs, noMaterials: !ctx.count, chat: true }) + '\n涉及知识或解题的问题：第一句先直接给出答案或结论，再写必要的步骤和依据（备考时一眼能看到答案）。其他问题（学习方法、聊天等）直接自然地回答。不要写“结论：”“说明：”这类固定标签。';
-      const r = await askChatStream(sys, head.concat(hist), signal);
+      const live = chatLive();
+      let r;
+      try { r = await callGemini({ system: sys, contents: head.concat(hist), signal: signal, onText: live }); } finally { live.stop(); }
       S.chat.push({ role: 'model', text: r.text }); save(); renderChat();
     } catch (e) {
       S.chat.pop(); if (!isPreset) { ta.value = text === IMG_ASK && ids.length ? '' : text; pending = imgs; renderAttach(); }
@@ -1707,7 +1737,6 @@ function updateCounts() {
   });
 }
 function renderNotes() {
-  paintCite();
   const out = $('#notesOut'), bar = $('#notesBar');
   if (!S.notes) { out.innerHTML = '<div class="empty">还没有笔记。先在「资料」页上传文件，再点上面的「生成笔记」。</div>'; bar.hidden = true; return; }
   out.innerHTML = renderMarkdown(S.notes);
@@ -1850,11 +1879,10 @@ function renderChips() {
   });
 }
 function renderChat() {
-  paintCite();
   const log = $('#chatLog'); log.innerHTML = '';
   if (!S.chat.length) {
     const d = document.createElement('div'); d.className = 'empty';
-    d.textContent = '勾选好资料后，直接问问题；也可以点输入框左边的相机，拍一道题来问。回答会尽量标出出处页码（默认隐藏，点下面的「显示出处」查看），页码仅供参考。';
+    d.textContent = '勾选好资料后，直接问问题；也可以点输入框左边的相机，拍一道题来问。回答会尽量标出出处页码，页码仅供参考。';
     log.appendChild(d); return;
   }
   S.chat.forEach((m, i) => {
@@ -2646,7 +2674,9 @@ function regenChat() {
         { role: 'model', parts: [{ text: '好的，我已读完这些资料，请提问。' }] }
       ] : [];
       const sys = systemPrompt({ images: hasImgs, noMaterials: !ctx.count, chat: true }) + '\n涉及知识或解题的问题：第一句先直接给出答案或结论，再写必要的步骤和依据（备考时一眼能看到答案）。其他问题（学习方法、聊天等）直接自然地回答。不要写“结论：”“说明：”这类固定标签。';
-      const r = await askChatStream(sys, head.concat(hs), signal);
+      const live = chatLive();
+      let r;
+      try { r = await callGemini({ system: sys, contents: head.concat(hs), signal: signal, onText: live }); } finally { live.stop(); }
       S.chat.push({ role: 'model', text: r.text }); save(); renderChat();
     } catch (e) { if (removed) S.chat.push(removed); renderChat(); throw e; }
   });
@@ -2814,6 +2844,15 @@ function bindUI() {
   $('#btnCopyExam').onclick = () => { const x = splitExam(S.exam); copyText(x.paper + (x.ans ? '\n\n---\n参考答案\n\n' + x.ans : '')); };
   $('#btnDownExam').onclick = () => { const x = splitExam(S.exam); download('模拟卷-' + S.settings.subject + '.md', x.paper + (x.ans ? '\n\n---\n\n# 参考答案\n\n' + x.ans : '')); };
   $('#btnPrintExam').onclick = () => { showTab('exam'); window.print(); };
+  $('#btnExamAns').onclick = () => {
+    const ab = $('#examAnsBox');
+    if (busy || !S.exam) return;
+    if (ab.hidden) { genExamAnswer(); return; }
+    ab.open = !ab.open;
+    if (ab.open) ab.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  $('#examAnsBox').addEventListener('toggle', () => { const ab = $('#examAnsBox'); if (!ab.hidden) $('#btnExamAns').textContent = ab.open ? '隐藏答案' : '显示答案'; });
+  $('#btnExamAnsRegen').onclick = genExamAnswer;
   $('#btnDelExam').onclick = () => {
     if (busy || !S.exam) return;
     const subj = S.settings.subject, old = { exam: S.exam, examMeta: S.examMeta };
@@ -2856,8 +2895,6 @@ function bindUI() {
   $('#btnImport').onclick = () => $('#importInput').click();
   $('#importInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) importBackup(f); };
   $('#btnCancel').onclick = () => { if (ctrl) ctrl.abort(); };
-  $('#btnCiteNotes').onclick = toggleCite;
-  $('#btnCiteChat').onclick = toggleCite;
   $('#btnCopyNotes').onclick = () => copyText(S.notes);
   $('#btnDownNotes').onclick = () => download('复习笔记-' + S.settings.subject + '.md', S.notes);
   $('#btnPrintNotes').onclick = () => { showTab('notes'); window.print(); };
